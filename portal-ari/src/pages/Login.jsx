@@ -44,18 +44,16 @@ export default function Login() {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-          // 2. Consulta qual é o papel (role) dele na tabela profiles
           const { data: profile } = await supabase
             .from('profiles')
-            .select('role')
+            .select('is_admin')
             .eq('id', user.id)
             .single();
 
-          // 3. Faz o desvio de rota inteligente
-          if (profile?.role === 'admin') {
-            navigate('/admin/'); // O Ari (Admin) cai aqui
+          if (profile?.is_admin) {
+            navigate('/admin');
           } else {
-            navigate('/dashboard'); // O Aluno comum cai aqui
+            navigate('/dashboard');
           }
         } else {
           // Fallback de segurança

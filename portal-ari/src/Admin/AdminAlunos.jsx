@@ -96,10 +96,10 @@ export default function AdminAlunos() {
           id,
           nome,
           created_at,
-          role,
+          is_admin,
           turmas:turma_id ( id, nome )
         `)
-        .neq('role', 'admin')
+        .eq('is_admin', false)
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;

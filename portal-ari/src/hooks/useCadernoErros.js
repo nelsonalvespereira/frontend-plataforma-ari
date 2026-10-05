@@ -50,5 +50,23 @@ export function useCadernoErros() {
     carregar();
   }, [carregar]);
 
-  return { questoes, loading, error, recarregar: carregar };
+  // "Já aprendi": grava uma revisão na mesma tabela de respostas.
+  // A última tentativa passa a ser correta e a questão sai do caderno.
+  // O desempenho ignora alternativa_escolhida === '__revisado__' para não inflar acertos.
+  async function marcarResolvida(questaoId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: new Error('Usuário não autenticado') };
+
+    const { error } = await supabase.from('respostas_questoes').insert({
+      user_id: user.id,
+      questao_id: questaoId,
+      alternativa_escolhida: '__revisado__',
+      correta: true,
+    });
+
+    if (!error) await carregar();
+    return { error };
+  }
+
+  return { questoes, loading, error, recarregar: carregar, marcarResolvida };
 }

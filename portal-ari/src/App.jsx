@@ -27,6 +27,7 @@ import AdminModulos from './Admin/AdminModulos';
 import AdminNovaQuestao from './pages/AdminNovaQuestao';
 import AdminNovoSimulado from './Admin/AdminNovoSimulado';
 import AdminAssuntos from './Admin/AdminAssuntos';
+import AdminCronograma from './Admin/AdminCronograma';
 
 // Componentes do Aluno
 import BancoQuestoes from './pages/BancoQuestoes';
@@ -78,6 +79,7 @@ function App() {
           <Route path="/admin/editar-questao/:id" element={<AdminRoute><AdminEditarQuestao /></AdminRoute>} />
           <Route path="/admin/novo-simulado" element={<AdminRoute><AdminNovoSimulado /></AdminRoute>} />
           <Route path="/admin/assuntos" element={<AdminRoute><AdminAssuntos /></AdminRoute>} />
+          <Route path="/admin/cronograma" element={<AdminRoute><AdminCronograma /></AdminRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

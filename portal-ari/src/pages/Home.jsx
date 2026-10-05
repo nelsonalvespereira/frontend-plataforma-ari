@@ -4,10 +4,7 @@ import { Target, BookOpen, GraduationCap, Calculator, ChevronRight, Quote, Atom,
 import { motion } from 'framer-motion';
 
 import logoAri from '../assets/logo-ari.jpeg';
-
-function isAuthenticated() {
-  return !!localStorage.getItem('authToken');
-}
+import { useAuth } from '../hooks/useAuth';
 
 const NICHE_STORAGE_KEY = 'selectedNiche';
 
@@ -86,8 +83,11 @@ const ACCENT_STYLES = {
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [selectedNiche, setSelectedNiche] = React.useState(null);
   const [isNavigating, setIsNavigating] = React.useState(false);
+
+  const destinoLogado = profile?.is_admin ? '/admin' : '/dashboard';
 
   const handleSelectNiche = (nicheId) => {
     setSelectedNiche(nicheId);
@@ -96,8 +96,8 @@ export default function LandingPage() {
     localStorage.setItem(NICHE_STORAGE_KEY, nicheId);
 
     setTimeout(() => {
-      if (isAuthenticated()) {
-        navigate('/dashboard', { state: { niche: nicheId } });
+      if (user) {
+        navigate(destinoLogado, { state: { niche: nicheId } });
       } else {
         navigate(`/login?niche=${nicheId}`, { state: { niche: nicheId } });
       }
@@ -152,11 +152,11 @@ export default function LandingPage() {
 
         <div className="flex items-center gap-3">
           <Link
-            to="/login"
+            to={user ? destinoLogado : '/login'}
             className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white font-semibold text-sm transition-colors"
           >
             <LogIn className="w-4 h-4" />
-            <span className="hidden sm:inline">Entrar</span>
+            <span className="hidden sm:inline">{user ? 'Minha área' : 'Entrar'}</span>
           </Link>
 
           <button

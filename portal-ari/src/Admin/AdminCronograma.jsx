@@ -44,7 +44,7 @@ export default function AdminCronograma() {
         setLoading(true);
         const [{ data: turmasData }, { data: alunosData }, { data: modulosData }] = await Promise.all([
           supabase.from('turmas').select('id, nome').order('nome'),
-          supabase.from('profiles').select('id, nome').neq('role', 'admin').order('nome'),
+          supabase.from('profiles').select('id, nome').eq('is_admin', false).order('nome'),
           supabase.from('modulos').select('id, titulo, turma_id').order('ordem', { ascending: true })
         ]);
 

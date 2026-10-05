@@ -19,7 +19,7 @@ export function useDesempenho() {
 
     const { data, error } = await supabase
       .from('respostas_questoes')
-      .select('correta, questoes ( assunto )');
+      .select('correta, alternativa_escolhida, questoes ( assunto )');
 
     if (error) {
       setError(error);
@@ -27,11 +27,12 @@ export function useDesempenho() {
       return;
     }
 
-    const total = data.length;
-    const acertos = data.filter((r) => r.correta).length;
+    const tentativas = (data ?? []).filter((r) => r.alternativa_escolhida !== '__revisado__');
+    const total = tentativas.length;
+    const acertos = tentativas.filter((r) => r.correta).length;
 
     const porAssuntoMap = {};
-    data.forEach((r) => {
+    tentativas.forEach((r) => {
       const assunto = r.questoes?.assunto ?? 'Outros';
       if (!porAssuntoMap[assunto]) porAssuntoMap[assunto] = { assunto, total: 0, acertos: 0 };
       porAssuntoMap[assunto].total += 1;
@@ -49,6 +50,7 @@ export function useDesempenho() {
       Object.values(porAssuntoMap).map((item) => ({
         assunto: item.assunto,
         acertos: Math.round((item.acertos / item.total) * 100),
+        total: item.total,
       }))
     );
 

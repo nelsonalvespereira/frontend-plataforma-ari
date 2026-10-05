@@ -36,6 +36,7 @@ export function useAdminAlunos({ busca, turmaId } = {}) {
     let query = supabase
       .from('profiles')
       .select('id, nome, is_admin, created_at, turmas ( nome )')
+      .eq('is_admin', false)
       .order('created_at', { ascending: false });
 
     if (turmaId) query = query.eq('turma_id', turmaId);

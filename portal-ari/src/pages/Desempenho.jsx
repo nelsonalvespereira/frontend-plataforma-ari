@@ -1,95 +1,31 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { ArrowLeft, Trophy, Zap, Flame, Target, TrendingUp, Medal, Loader2, BookOpen, CheckCircle2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { ArrowLeft, Trophy, Zap, Flame, Target, TrendingUp, Medal, Loader2, BookOpen } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useGamificacao, useRanking } from '../hooks/useGamificacao';
+import { useDesempenho } from '../hooks/useDesempenho';
+import { useAuth } from '../hooks/useAuth';
 import Sidebar from './Sidebar';
 
+const CORES_BARRA = ['bg-brand-orange', 'bg-amber-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-rose-500'];
+
 export default function Desempenho() {
-  const navigate = useNavigate();
-  const [perfil, setPerfil] = useState(null);
-  const [desempenhoMaterias, setDesempenhoMaterias] = useState([]);
-  const [loadingDesempenho, setLoadingDesempenho] = useState(true);
-  
-  // Pegamos os dados em tempo real do Hook de Gamificação
+  const { profile } = useAuth();
   const { xp, streak, loading: loadingGami } = useGamificacao();
-  
-  // Pegamos o Ranking (limitado aos Top 10)
   const { ranking, loading: loadingRanking } = useRanking({ limite: 10 });
+  const { porAssunto, loading: loadingDesempenho } = useDesempenho();
 
-  useEffect(() => {
-    async function carregarDadosDesempenho() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return navigate('/login');
-        
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, nome, turma_id')
-          .eq('id', user.id)
-          .single();
-            
-        if (profileError) throw profileError;
-        setPerfil(profileData);
+  const desempenhoMaterias = porAssunto.map((item, index) => ({
+    nome: item.assunto,
+    acertos: item.acertos,
+    totalRespondidas: item.total,
+    cor: CORES_BARRA[index % CORES_BARRA.length],
+  }));
 
-        // Busca o histórico de questões respondidas pelo aluno
-        // Ajuste o nome da tabela e colunas conforme a sua estrutura do Banco de Questões (ex: questoes_historico, respostas_aluno, etc.)
-        const { data: historico, error: histError } = await supabase
-          .from('historico_questoes') 
-          .select('materia, acertou')
-          .eq('user_id', user.id);
-
-        if (!histError && historico && historico.length > 0) {
-          // Agrupa e calcula a taxa de acerto real por matéria
-          const materiasMap = {};
-
-          historico.forEach(item => {
-            const materia = item.materia || 'Geral';
-            if (!materiasMap[materia]) {
-              materiasMap[materia] = { total: 0, acertos: 0 };
-            }
-            materiasMap[materia].total += 1;
-            if (item.acertou) {
-              materiasMap[materia].acertos += 1;
-            }
-          });
-
-          // Cores dinâmicas para as barras
-          const cores = ['bg-brand-orange', 'bg-amber-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-rose-500'];
-          
-          const resultadoReal = Object.keys(materiasMap).map((mat, index) => {
-            const dados = materiasMap[mat];
-            const porcentagem = Math.round((dados.acertos / dados.total) * 100);
-            return {
-              nome: mat,
-              acertos: porcentagem,
-              totalRespondidas: dados.total,
-              cor: cores[index % cores.length]
-            };
-          });
-
-          setDesempenhoMaterias(resultadoReal);
-        } else {
-          // Caso o aluno ainda não tenha respondido questões, exibimos array vazio formatado
-          setDesempenhoMaterias([]);
-        }
-
-      } catch (err) {
-        console.error('Erro ao carregar desempenho:', err);
-      } finally {
-        setLoadingDesempenho(false);
-      }
-    }
-
-    carregarDadosDesempenho();
-  }, [navigate]);
-
-  // Lógica de Níveis (A cada 500 XP o aluno sobe de nível)
   const nivelAtual = Math.floor((xp || 0) / 500) + 1;
   const xpProximoNivel = nivelAtual * 500;
   const progressoNivel = (((xp || 0) % 500) / 500) * 100;
 
-  if (loadingGami || loadingRanking || loadingDesempenho || !perfil) {
+  if (loadingGami || loadingRanking || loadingDesempenho || !profile) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
         <Loader2 className="w-12 h-12 animate-spin text-brand-orange" />
@@ -223,7 +159,7 @@ export default function Desempenho() {
                   </div>
                 ) : (
                   ranking.map((aluno, idx) => {
-                    const isEu = aluno.id === perfil.id;
+                    const isEu = aluno.id === profile.id;
                     let corPosicao = "bg-slate-100 text-slate-500";
                     if (idx === 0) corPosicao = "bg-amber-100 text-amber-600 border border-amber-200";
                     if (idx === 1) corPosicao = "bg-slate-200 text-slate-600 border border-slate-300";

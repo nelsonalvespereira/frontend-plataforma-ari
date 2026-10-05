@@ -48,7 +48,7 @@ export default function Admin() {
         const { count: totalAlunos, error: errAlunos } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })
-          .neq('role', 'admin');
+          .eq('is_admin', false);
 
         if (errAlunos) console.error(errAlunos);
 
@@ -70,10 +70,10 @@ export default function Admin() {
             id,
             nome,
             created_at,
-            role,
+            is_admin,
             turmas:turma_id ( id, nome )
           `)
-          .neq('role', 'admin')
+          .eq('is_admin', false)
           .order('created_at', { ascending: false })
           .limit(8);
 

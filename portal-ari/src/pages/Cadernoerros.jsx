@@ -3,7 +3,6 @@ import { AlertCircle, Loader2, X, ChevronRight, CheckCircle2 } from 'lucide-reac
 import Sidebar from './Sidebar';
 import { useCadernoErros } from '../hooks/useCadernoErros';
 import QuestaoPreviewCard from '../components/QuestaoPreviewCard';
-import { supabase } from '../lib/supabaseClient';
 
 const DIFICULDADE_STYLE = {
   facil: 'bg-emerald-50 text-emerald-700',
@@ -13,7 +12,7 @@ const DIFICULDADE_STYLE = {
 const DIFICULDADE_LABEL = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' };
 
 export default function CadernoErros() {
-  const { questoes, loading, error, recarregar } = useCadernoErros();
+  const { questoes, loading, error, marcarResolvida } = useCadernoErros();
   const [questaoAberta, setQuestaoAberta] = useState(null);
   const [removendoId, setRemovendoId] = useState(null);
 
@@ -23,33 +22,12 @@ export default function CadernoErros() {
     setRemovendoId(questaoId);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { error: err } = await marcarResolvida(questaoId);
+      if (err) throw err;
 
-      // Remove o registro da tabela de erros/historico do aluno
-      const { error: err } = await supabase
-        .from('historico_questoes') // ou a tabela correspondente ao caderno de erros do seu banco
-        .delete()
-        .eq('user_id', user.id)
-        .eq('questao_id', questaoId);
-
-      if (err) {
-        // Se a tabela usar outro nome ou status, tentamos atualizar o status se existir
-        await supabase
-          .from('caderno_erros')
-          .update({ resolvido: true })
-          .eq('user_id', user.id)
-          .eq('questao_id', questaoId);
-      }
-
-      // Fecha o modal se estiver aberto na questão removida
       if (questaoAberta?.id === questaoId) {
         setQuestaoAberta(null);
       }
-
-      // Recarrega os dados do hook se disponível
-      if (recarregar) recarregar();
-      else window.location.reload(); // Recarregamento de segurança caso o hook não exponha recarregar
     } catch (err) {
       console.error('Erro ao resolver questão:', err);
     } finally {

@@ -1,19 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, ListOrdered, Target, PlayCircle, Radio, TrendingUp,
   Trophy, LogOut, Calendar, AlertCircle, Bookmark,
 } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 import logoAri from '../assets/logo-ari.jpeg';
-
-const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/banco-questoes', label: 'Banco de Questões', icon: FileText },
-  { to: '/assuntos-enem', label: 'Assuntos do ENEM', icon: ListOrdered },
-  { to: '/simulados', label: 'Simulados', icon: Target },
-  { to: '/player', label: 'Videoaulas', icon: PlayCircle },
-  { to: '/lives', label: 'Lives', icon: Radio },
-];
 
 const NAV_ITEMS_SECONDARY = [
   { to: '/desempenho', label: 'Meu Desempenho', icon: TrendingUp },
@@ -32,6 +24,35 @@ const navLinkClass = ({ isActive }) =>
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const [isEnem, setIsEnem] = useState(false);
+
+  useEffect(() => {
+    async function verificarTurmaEnem() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Busca o perfil do aluno para verificar o curso/turma
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('curso, turma') // ajuste conforme a coluna que define a turma no seu banco
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          const valorCurso = (profile.curso || profile.turma || '').toLowerCase();
+          // Se o curso ou turma contiver "enem", libera o link
+          if (valorCurso.includes('enem')) {
+            setIsEnem(true);
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao verificar turma do aluno:', err);
+      }
+    }
+
+    verificarTurmaEnem();
+  }, []);
 
   return (
     <aside className="w-64 bg-slate-950 flex-col hidden lg:flex shrink-0">
@@ -50,12 +71,39 @@ export default function Sidebar() {
         <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-2">
           Plataforma
         </p>
-        {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-          <NavLink key={to} to={to} end={end} className={navLinkClass}>
-            <Icon className="w-4.5 h-4.5 mr-3 shrink-0" />
-            {label}
+        
+        <NavLink to="/dashboard" end className={navLinkClass}>
+          <LayoutDashboard className="w-4.5 h-4.5 mr-3 shrink-0" />
+Dashboard
+        </NavLink>
+        
+        <NavLink to="/banco-questoes" className={navLinkClass}>
+          <FileText className="w-4.5 h-4.5 mr-3 shrink-0" />
+          Banco de Questões
+        </NavLink>
+
+        {/* Aparece EXCLUSIVAMENTE se for da turma do ENEM */}
+        {isEnem && (
+          <NavLink to="/assuntos-enem" className={navLinkClass}>
+            <ListOrdered className="w-4.5 h-4.5 mr-3 shrink-0" />
+            Assuntos do ENEM
           </NavLink>
-        ))}
+        )}
+
+        <NavLink to="/simulados" className={navLinkClass}>
+          <Target className="w-4.5 h-4.5 mr-3 shrink-0" />
+          Simulados
+        </NavLink>
+        
+        <NavLink to="/player" className={navLinkClass}>
+          <PlayCircle className="w-4.5 h-4.5 mr-3 shrink-0" />
+          Videoaulas
+        </NavLink>
+        
+        <NavLink to="/lives" className={navLinkClass}>
+          <Radio className="w-4.5 h-4.5 mr-3 shrink-0" />
+          Lives
+        </NavLink>
 
         <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-600 mt-6 mb-2">
           Acompanhamento
@@ -71,11 +119,11 @@ export default function Sidebar() {
       <div className="p-4 border-t border-slate-800/60">
         <button
           onClick={() => navigate('/')}
-          className="flex items-center justify-center w-full py-2.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl font-semibold text-sm transition-colors"
+          className="flex items-center justify-center w-full py-2.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
         >
           <LogOut className="w-4 h-4 mr-2" /> Sair
         </button>
       </div>
-    </aside>
+   </aside>
   );
 }
