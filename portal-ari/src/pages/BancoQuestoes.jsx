@@ -88,7 +88,23 @@ export default function BancoQuestoes() {
 
   const handleResponder = async () => {
     if (!respostaSelecionada || !questaoAtual) return;
-    await responder(questaoAtual.id, respostaSelecionada, questaoAtual.resposta_correta);
+    const { resultado, error: erroResposta } = await responder(questaoAtual.id, respostaSelecionada);
+    if (erroResposta || !resultado) {
+      alert('Não foi possível registrar sua resposta. Tente novamente.');
+      return;
+    }
+    // O gabarito só chega do servidor depois da resposta: guarda na questão atual.
+    setQuestoesEmbaralhadas((prev) => prev.map((q) => (
+      q.id === questaoAtual.id
+        ? {
+            ...q,
+            resposta_correta: resultado.resposta_correta,
+            comentario: resultado.comentario,
+            video_resolucao_url: resultado.video_resolucao_url,
+            resolucao_video_url: resultado.resolucao_video_url,
+          }
+        : q
+    )));
     setRespondida(true);
   };
 

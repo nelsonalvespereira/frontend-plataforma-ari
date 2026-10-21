@@ -76,27 +76,29 @@ export function useQuestoes({ materia, assunto, assuntoId, assuntoIds, dificulda
     carregar();
   }, [carregar]);
 
-  async function responder(questaoId, alternativaEscolhida, respostaCorreta) {
-    return responderQuestaoAvulsa(questaoId, alternativaEscolhida, respostaCorreta);
+  async function responder(questaoId, alternativaEscolhida, modo) {
+    return responderQuestaoAvulsa(questaoId, alternativaEscolhida, modo);
   }
 
   return { questoes, total, loading, error, recarregar: carregar, responder };
 }
 
-export async function responderQuestaoAvulsa(questaoId, alternativaEscolhida, respostaCorreta) {
-  const correta = alternativaEscolhida === respostaCorreta;
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { correta, error: new Error('Usuário não autenticado') };
-
-  const { error } = await supabase.from('respostas_questoes').insert({
-    user_id: user.id,
-    questao_id: questaoId,
-    alternativa_escolhida: alternativaEscolhida,
-    correta,
+// A correção acontece no servidor: ele grava a resposta e devolve o gabarito (só depois de responder).
+// modo 'personalizado' também concede XP (no máximo uma vez por questão).
+export async function responderQuestaoAvulsa(questaoId, alternativaEscolhida, modo = 'avulsa') {
+  const { data, error } = await supabase.rpc('responder_questao', {
+    p_questao_id: questaoId,
+    p_alternativa: alternativaEscolhida,
+    p_modo: modo,
   });
 
-  return { correta, error };
+  return { correta: data?.correta ?? false, resultado: data ?? null, error };
+}
+
+// Gabarito de uma questão que o aluno já respondeu ou favoritou (null se ainda não tem direito).
+export async function obterGabarito(questaoId) {
+  const { data, error } = await supabase.rpc('obter_gabarito', { p_questao_id: questaoId });
+  return { gabarito: data ?? null, error };
 }
 
 export function useAssuntosDisponiveis() {

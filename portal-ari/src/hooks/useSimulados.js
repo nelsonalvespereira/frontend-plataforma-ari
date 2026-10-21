@@ -28,15 +28,25 @@ export function useSimulados({ tipo } = {}) {
 }
 
 // Busca as questões de um simulado específico, na ordem certa.
-export async function buscarQuestoesDoSimulado(simuladoId) {
+// comGabarito só funciona para admin (a tabela do gabarito é restrita); para o aluno vem sem gabarito.
+export async function buscarQuestoesDoSimulado(simuladoId, { comGabarito = false } = {}) {
+  const colunas = comGabarito ? 'ordem, questoes (*, questoes_gabarito (*))' : 'ordem, questoes (*)';
   const { data, error } = await supabase
     .from('simulado_questoes')
-    .select('ordem, questoes (*)')
+    .select(colunas)
     .eq('simulado_id', simuladoId)
     .order('ordem', { ascending: true });
 
   if (error) return { questoes: [], error };
-  return { questoes: data.map((row) => row.questoes), error: null };
+
+  const questoes = data.map((row) => {
+    const q = row.questoes;
+    if (!comGabarito || !q) return q;
+    const { questoes_gabarito: g, ...resto } = q;
+    const gab = Array.isArray(g) ? g[0] : g;
+    return { ...resto, ...(gab ?? {}) };
+  });
+  return { questoes, error: null };
 }
 
 // Aluno monta o próprio simulado (Por Assunto / Personalizado).
@@ -63,33 +73,19 @@ export async function criarSimuladoAluno({ titulo, turmaId, tipo, tempoMinutos, 
 }
 
 // Cria a tentativa ao iniciar a prova.
+// A tentativa é aberta e corrigida pelo servidor.
 export async function iniciarTentativa(simuladoId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { tentativa: null, error: new Error('Usuário não autenticado') };
-
-  const { data, error } = await supabase
-    .from('tentativas_simulado')
-    .insert({ user_id: user.id, simulado_id: simuladoId, respostas: {} })
-    .select()
-    .single();
-
+  const { data, error } = await supabase.rpc('iniciar_tentativa_simulado', {
+    p_simulado_id: simuladoId,
+  });
   return { tentativa: data, error };
 }
 
-// Salva as respostas e fecha a tentativa.
-export async function finalizarTentativa(tentativaId, respostas, { acertos, erros, emBranco }) {
-  const { data, error } = await supabase
-    .from('tentativas_simulado')
-    .update({
-      respostas,
-      acertos,
-      erros,
-      em_branco: emBranco,
-      finalizado_em: new Date().toISOString(),
-    })
-    .eq('id', tentativaId)
-    .select()
-    .single();
-
-  return { tentativa: data, error };
+// Envia as respostas; o servidor corrige, grava e devolve { acertos, erros, em_branco, total, gabarito }.
+export async function finalizarTentativa(tentativaId, respostas) {
+  const { data, error } = await supabase.rpc('finalizar_tentativa_simulado', {
+    p_tentativa_id: tentativaId,
+    p_respostas: respostas,
+  });
+  return { resultado: data, error };
 }

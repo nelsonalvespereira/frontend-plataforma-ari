@@ -147,16 +147,29 @@ export default function AdminNovaQuestao() {
         blocos_enunciado_inferior: blocosInfProntos,
         imagem_url: imagemPrincipalUrl,
         alternativas: alternativasFormatadas,
-        resposta_correta: respostaCorreta,
-        comentario: comentario.trim() || null,
-        video_resolucao_url: urlVideoFormatada || null,
         ano: ano ? parseInt(ano) : null,
         banca: banca.trim() || 'Inédita',
       };
 
-      const { error } = await supabase.from('questoes').insert([dadosQuestao]);
+      const { data: nova, error } = await supabase
+        .from('questoes')
+        .insert([dadosQuestao])
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // O gabarito fica em tabela própria (só admin lê). Se falhar, desfaz a questão.
+      const { error: erroGabarito } = await supabase.from('questoes_gabarito').insert({
+        questao_id: nova.id,
+        resposta_correta: respostaCorreta,
+        comentario: comentario.trim() || null,
+        video_resolucao_url: urlVideoFormatada || null,
+      });
+      if (erroGabarito) {
+        await supabase.from('questoes').delete().eq('id', nova.id);
+        throw erroGabarito;
+      }
 
       setSucesso(true);
       resetarFormulario();

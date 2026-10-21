@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileQuestion, Video, Calendar, Settings, FolderTree } from 'lucide-react';
+import { LayoutDashboard, Users, FileQuestion, Video, Calendar, Settings, FolderTree, Package } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Visão Geral', icon: LayoutDashboard, end: true },
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/admin/modulos', label: 'Módulos e Aulas', icon: Video },
   { to: '/admin/aulas-lives', label: 'Aulas e Lives', icon: Video },
   { to: '/admin/cronograma', label: 'Plano de Estudos', icon: Calendar },
+  { to: '/admin/pack', label: 'Pack Avulso', icon: Package },
 ];
 
 const navLinkClass = ({ isActive }) =>

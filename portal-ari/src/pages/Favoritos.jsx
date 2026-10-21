@@ -3,6 +3,7 @@ import { Bookmark, Loader2, X, ChevronRight, Trash2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useFavoritos, removerFavorito } from '../hooks/useFavoritos';
 import QuestaoPreviewCard from '../components/QuestaoPreviewCard';
+import { obterGabarito } from '../hooks/useQuestoes';
 
 const DIFICULDADE_STYLE = {
   facil: 'bg-emerald-50 text-emerald-700',
@@ -14,6 +15,16 @@ const DIFICULDADE_LABEL = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil
 export default function Favoritos() {
   const { questoes, loading, error, recarregar } = useFavoritos();
   const [questaoAberta, setQuestaoAberta] = useState(null);
+
+  // Busca o gabarito no servidor (só devolve para questões que o aluno já respondeu ou favoritou).
+  const abrirQuestao = async (q) => {
+    setQuestaoAberta(q);
+    const { gabarito } = await obterGabarito(q.id);
+    if (gabarito) {
+      setQuestaoAberta((atual) => (atual && atual.id === q.id ? { ...atual, ...gabarito } : atual));
+    }
+  };
+
 
   const handleRemover = async (e, favoritoId) => {
     e.stopPropagation();
@@ -75,7 +86,7 @@ export default function Favoritos() {
             {!loading && questoes.map((q) => (
               <div
                 key={q.favoritoId}
-                onClick={() => setQuestaoAberta(q)}
+                onClick={() => abrirQuestao(q)}
                 className="w-full flex items-center justify-between gap-4 bg-white border border-slate-200 hover:border-brand-orange/40 rounded-2xl p-4 text-left transition-colors group cursor-pointer"
               >
                 <div className="min-w-0 flex-1">

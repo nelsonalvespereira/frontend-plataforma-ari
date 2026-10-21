@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, ListOrdered, Target, PlayCircle, Radio, TrendingUp,
-  Trophy, LogOut, Calendar, AlertCircle, Bookmark,
+  Trophy, LogOut, Calendar, AlertCircle, Bookmark, ShoppingBag,
 } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../hooks/useAuth';
 import logoAri from '../assets/logo-ari.jpeg';
 
 const NAV_ITEMS_SECONDARY = [
@@ -24,35 +24,16 @@ const navLinkClass = ({ isActive }) =>
 
 export default function Sidebar() {
   const navigate = useNavigate();
-  const [isEnem, setIsEnem] = useState(false);
+  const { profile, signOut } = useAuth();
 
-  useEffect(() => {
-    async function verificarTurmaEnem() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  // A turma vem do perfil já carregado (profiles.turma_id -> turmas.slug / nome).
+  const turma = `${profile?.turmas?.slug ?? ''} ${profile?.turmas?.nome ?? ''}`.toLowerCase();
+  const isEnem = turma.includes('enem');
 
-        // Busca o perfil do aluno para verificar o curso/turma
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('curso, turma') // ajuste conforme a coluna que define a turma no seu banco
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          const valorCurso = (profile.curso || profile.turma || '').toLowerCase();
-          // Se o curso ou turma contiver "enem", libera o link
-          if (valorCurso.includes('enem')) {
-            setIsEnem(true);
-          }
-        }
-      } catch (err) {
-        console.error('Erro ao verificar turma do aluno:', err);
-      }
-    }
-
-    verificarTurmaEnem();
-  }, []);
+  const sair = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   return (
     <aside className="w-64 bg-slate-950 flex-col hidden lg:flex shrink-0">
@@ -71,18 +52,18 @@ export default function Sidebar() {
         <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-2">
           Plataforma
         </p>
-        
+
         <NavLink to="/dashboard" end className={navLinkClass}>
           <LayoutDashboard className="w-4.5 h-4.5 mr-3 shrink-0" />
-Dashboard
+          Dashboard
         </NavLink>
-        
+
         <NavLink to="/banco-questoes" className={navLinkClass}>
           <FileText className="w-4.5 h-4.5 mr-3 shrink-0" />
           Banco de Questões
         </NavLink>
 
-        {/* Aparece EXCLUSIVAMENTE se for da turma do ENEM */}
+        {/* Aparece só para a turma do ENEM */}
         {isEnem && (
           <NavLink to="/assuntos-enem" className={navLinkClass}>
             <ListOrdered className="w-4.5 h-4.5 mr-3 shrink-0" />
@@ -94,15 +75,29 @@ Dashboard
           <Target className="w-4.5 h-4.5 mr-3 shrink-0" />
           Simulados
         </NavLink>
-        
+
         <NavLink to="/player" className={navLinkClass}>
           <PlayCircle className="w-4.5 h-4.5 mr-3 shrink-0" />
           Videoaulas
         </NavLink>
-        
+
         <NavLink to="/lives" className={navLinkClass}>
           <Radio className="w-4.5 h-4.5 mr-3 shrink-0" />
           Lives
+        </NavLink>
+
+        {/* Loja de Packs: fica ativo também dentro de um pack (/pack/...) */}
+        <NavLink
+          to="/packs"
+          className={({ isActive }) =>
+            navLinkClass({ isActive: isActive || window.location.pathname.startsWith('/pack/') })
+          }
+        >
+          <ShoppingBag className="w-4.5 h-4.5 mr-3 shrink-0" />
+          Packs Avulsos
+          <span className="ml-auto text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-brand-orange/15 text-brand-orange">
+            
+          </span>
         </NavLink>
 
         <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-600 mt-6 mb-2">
@@ -118,12 +113,12 @@ Dashboard
 
       <div className="p-4 border-t border-slate-800/60">
         <button
-          onClick={() => navigate('/')}
+          onClick={sair}
           className="flex items-center justify-center w-full py-2.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
         >
           <LogOut className="w-4 h-4 mr-2" /> Sair
         </button>
       </div>
-   </aside>
+    </aside>
   );
 }

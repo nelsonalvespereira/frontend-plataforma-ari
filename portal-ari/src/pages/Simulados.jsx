@@ -225,6 +225,14 @@ export default function Simulados() {
     setFinalizando(false);
   };
 
+  // Acabou o tempo: encerra a prova sozinho (antes o cronômetro parava em 00:00:00 e a prova seguia aberta).
+  useEffect(() => {
+    if (modoResolucao && !resultado && !finalizando && tentativaId && segundosRestantes === 0) {
+      handleFinalizar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modoResolucao, segundosRestantes]);
+
   const sairDaProva = () => {
     setModoResolucao(false);
     setSimuladoAtivo(null);

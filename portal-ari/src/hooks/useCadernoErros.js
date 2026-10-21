@@ -54,15 +54,7 @@ export function useCadernoErros() {
   // A última tentativa passa a ser correta e a questão sai do caderno.
   // O desempenho ignora alternativa_escolhida === '__revisado__' para não inflar acertos.
   async function marcarResolvida(questaoId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: new Error('Usuário não autenticado') };
-
-    const { error } = await supabase.from('respostas_questoes').insert({
-      user_id: user.id,
-      questao_id: questaoId,
-      alternativa_escolhida: '__revisado__',
-      correta: true,
-    });
+    const { error } = await supabase.rpc('marcar_questao_revisada', { p_questao_id: questaoId });
 
     if (!error) await carregar();
     return { error };

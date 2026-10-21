@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import RenderBlocos from '../components/RenderBlocos';
 import { useGamificacao } from '../hooks/useGamificacao';
+import { responderQuestaoAvulsa } from '../hooks/useQuestoes';
 
 export default function SimuladoPersonalizado() {
   const navigate = useNavigate();
@@ -27,6 +28,8 @@ export default function SimuladoPersonalizado() {
   const [indiceAtual, setIndiceAtual] = useState(0);
   const [respostasUsuario, setRespostasUsuario] = useState({}); // { [questaoId]: 'A' }
   const [gabaritosRevelados, setGabaritosRevelados] = useState({}); // { [questaoId]: true }
+  const [resultadosServidor, setResultadosServidor] = useState({}); // { [questaoId]: { correta, xp } }
+  const [confirmando, setConfirmando] = useState(false);
   const [carregandoQuiz, setCarregandoQuiz] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const [resultadoFinal, setResultadoFinal] = useState({ acertos: 0, total: 0, xpGanho: 0 });
@@ -102,6 +105,7 @@ export default function SimuladoPersonalizado() {
       setIndiceAtual(0);
       setRespostasUsuario({});
       setGabaritosRevelados({});
+      setResultadosServidor({});
       setEtapa('quiz');
     } catch (err) {
       console.error('Erro ao buscar questões:', err.message);
@@ -118,9 +122,27 @@ export default function SimuladoPersonalizado() {
     setRespostasUsuario(prev => ({ ...prev, [questaoAtual.id]: letra }));
   };
 
-  const confirmarRespostaAtual = () => {
-    if (!respostasUsuario[questaoAtual.id]) return;
-    setGabaritosRevelados(prev => ({ ...prev, [questaoAtual.id]: true }));
+  // O servidor corrige, grava a resposta, concede o XP e devolve o gabarito desta questão.
+  const confirmarRespostaAtual = async () => {
+    const q = questaoAtual;
+    if (!q || !respostasUsuario[q.id] || confirmando || gabaritosRevelados[q.id]) return;
+
+    setConfirmando(true);
+    const { resultado, error } = await responderQuestaoAvulsa(q.id, respostasUsuario[q.id], 'personalizado');
+    setConfirmando(false);
+
+    if (error || !resultado) {
+      alert('Não foi possível confirmar a resposta. Tente novamente.');
+      return;
+    }
+
+    setQuestoesQuiz(prev => prev.map(x => (
+      x.id === q.id
+        ? { ...x, resposta_correta: resultado.resposta_correta, comentario: resultado.comentario }
+        : x
+    )));
+    setResultadosServidor(prev => ({ ...prev, [q.id]: { correta: resultado.correta, xp: resultado.xp_ganho } }));
+    setGabaritosRevelados(prev => ({ ...prev, [q.id]: true }));
   };
 
   const proximaQuestao = () => {
@@ -134,31 +156,15 @@ export default function SimuladoPersonalizado() {
   const finalizarSimulado = async () => {
     setFinalizando(true);
     try {
-      let acertos = 0;
-      questoesQuiz.forEach(q => {
-        if (respostasUsuario[q.id] === q.resposta_correta) {
-          acertos++;
-        }
-      });
+      // Acertos e XP vêm das respostas já corrigidas pelo servidor.
+      const lista = Object.values(resultadosServidor);
+      const acertos = lista.filter(r => r.correta).length;
+      const xpGanho = lista.reduce((soma, r) => soma + (r.xp || 0), 0);
 
-      const total = questoesQuiz.length;
-      const xpGanho = acertos * 15; // 15 XP por acerto
+      if (xpGanho > 0) recarregar();
 
-      // Salva progresso / XP se houver ganho
-      if (xpGanho > 0) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: prof } = await supabase.from('profiles').select('xp').eq('id', user.id).single();
-          const novoXp = (prof?.xp || 0) + xpGanho;
-          await supabase.from('profiles').update({ xp: novoXp }).eq('id', user.id);
-          recarregar();
-        }
-      }
-
-      setResultadoFinal({ acertos, total, xpGanho });
+      setResultadoFinal({ acertos, total: questoesQuiz.length, xpGanho });
       setEtapa('resultado');
-    } catch (err) {
-      console.error('Erro ao finalizar simulado:', err);
     } finally {
       setFinalizando(false);
     }

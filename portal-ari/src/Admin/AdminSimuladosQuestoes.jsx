@@ -44,7 +44,7 @@ export default function AdminSimuladosQuestoes() {
   const abrirVisualizacaoSimulado = async (simulado) => {
     setSimuladoVisualizando(simulado);
     setCarregandoQuestoesSimulado(true);
-    const { questoes } = await buscarQuestoesDoSimulado(simulado.id);
+    const { questoes } = await buscarQuestoesDoSimulado(simulado.id, { comGabarito: true });
     setQuestoesDoSimulado(questoes);
     setCarregandoQuestoesSimulado(false);
   };

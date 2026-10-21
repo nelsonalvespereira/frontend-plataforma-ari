@@ -14,7 +14,10 @@ import {
   AlertCircle,
   Edit,
   Trash2,
-  KeyRound
+  KeyRound,
+  Gift,
+  Package,
+  Ban
 } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 import { supabase } from '../lib/supabaseClient';
@@ -23,6 +26,8 @@ const STATUS_STYLE = {
   Ativo: 'bg-emerald-50 text-emerald-700',
   Pendente: 'bg-amber-50 text-amber-700',
   Inativo: 'bg-slate-100 text-slate-500',
+  'Sem acesso': 'bg-slate-100 text-slate-500',
+  Expirado: 'bg-red-50 text-red-600',
 };
 
 function iniciais(nome) {
@@ -67,6 +72,11 @@ export default function AdminAlunos() {
   const [editForm, setEditForm] = useState({ nome: '', turma_id: '' });
   const [submittingEdit, setSubmittingEdit] = useState(false);
 
+  // Estado do Modal de Pack (liberação manual)
+  const [alunoPackAlvo, setAlunoPackAlvo] = useState(null);
+  const [diasPack, setDiasPack] = useState(2);
+  const [submittingPack, setSubmittingPack] = useState(false);
+
   // Estado do Modal de Senha
   const [modalSenhaOpen, setModalSenhaOpen] = useState(false);
   const [alunoSenhaAlvo, setAlunoSenhaAlvo] = useState(null);
@@ -97,6 +107,9 @@ export default function AdminAlunos() {
           nome,
           created_at,
           is_admin,
+          acesso_livre,
+          tipo_acesso,
+          data_expiracao_pack,
           turmas:turma_id ( id, nome )
         `)
         .eq('is_admin', false)
@@ -104,16 +117,43 @@ export default function AdminAlunos() {
 
       if (profilesError) throw profilesError;
 
-      const formatados = (profilesData || []).map((p) => ({
-        id: p.id,
-        nome: p.nome || 'Sem Nome',
-        email: 'Aluno(a)',
-        turma: p.turmas?.nome || 'Geral',
-        turma_id: p.turmas?.id || null,
-        plano: 'Padrão',
-        status: 'Ativo',
-        cadastro: p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '—'
-      }));
+      // Assinaturas ativas e nomes dos planos, para mostrar o acesso REAL de cada aluno
+      const [{ data: assinData }, { data: planosData }] = await Promise.all([
+        supabase.from('assinaturas').select('user_id, price_id, status').in('status', ['active', 'trialing']),
+        supabase.from('planos').select('price_id, nome'),
+      ]);
+      const assinPorUsuario = {};
+      (assinData || []).forEach((a) => { if (!assinPorUsuario[a.user_id]) assinPorUsuario[a.user_id] = a; });
+      const nomePlano = Object.fromEntries((planosData || []).map((pl) => [pl.price_id, pl.nome]));
+      const agora = Date.now();
+      const fmt = (iso) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+
+      const formatados = (profilesData || []).map((p) => {
+        const assinatura = assinPorUsuario[p.id];
+        const packAtivo = p.tipo_acesso === 'pack_temporario' && !!p.data_expiracao_pack
+          && new Date(p.data_expiracao_pack).getTime() > agora;
+        const packVencido = !packAtivo && (p.tipo_acesso === 'pack_temporario' || p.tipo_acesso === 'pack_expirado');
+
+        let plano = '—';
+        let status = 'Sem acesso';
+        if (assinatura) { plano = nomePlano[assinatura.price_id] || 'Assinante'; status = 'Ativo'; }
+        else if (p.acesso_livre) { plano = 'Cortesia'; status = 'Ativo'; }
+        else if (packAtivo) { plano = `Pack até ${fmt(p.data_expiracao_pack)}`; status = 'Ativo'; }
+        else if (packVencido) { plano = 'Pack expirado'; status = 'Expirado'; }
+
+        return {
+          id: p.id,
+          nome: p.nome || 'Sem Nome',
+          email: 'Aluno(a)',
+          turma: p.turmas?.nome || 'Geral',
+          turma_id: p.turmas?.id || null,
+          plano,
+          status,
+          acessoLivre: !!p.acesso_livre,
+          packAtivo,
+          cadastro: p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '—'
+        };
+      });
 
       setAlunos(formatados);
     } catch (error) {
@@ -132,18 +172,18 @@ export default function AdminAlunos() {
     if (!window.confirm(`Tem certeza que deseja excluir o aluno "${nome}"?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', id);
+      // Apaga a CONTA (auth.users); o profile some junto por cascade. Só a Edge Function consegue isso.
+      const { data, error } = await supabase.functions.invoke('admin-gerenciar-aluno', {
+        body: { action: 'delete_user', userId: id },
+      });
 
-      if (error) throw error;
+      if (error || data?.error) throw new Error(data?.error || error.message);
 
       alert('Aluno excluído com sucesso!');
       carregarDados();
     } catch (err) {
       console.error('Erro detalhado ao excluir aluno:', err);
-      alert('Erro ao excluir o aluno. Verifique as permissões (RLS) no Supabase.');
+      alert('Erro ao excluir o aluno: ' + (err.message || 'tente novamente.'));
     } finally {
       setMenuAbertoId(null);
     }
@@ -185,6 +225,58 @@ export default function AdminAlunos() {
     }
   };
 
+  // Acesso manual: cortesia (acesso_livre) liga/desliga sem passar pelo Stripe
+  const alternarCortesia = async (aluno) => {
+    setMenuAbertoId(null);
+    const dar = !aluno.acessoLivre;
+    const msg = dar
+      ? `Dar acesso de cortesia (sem cobrança) para "${aluno.nome}"?`
+      : `Remover a cortesia de "${aluno.nome}"? Ele perde o acesso se não tiver assinatura.`;
+    if (!window.confirm(msg)) return;
+
+    const { error } = await supabase.from('profiles').update({ acesso_livre: dar }).eq('id', aluno.id);
+    if (error) return alert('Erro ao alterar cortesia: ' + error.message);
+    carregarDados();
+  };
+
+  const abrirLiberarPack = (aluno) => {
+    setAlunoPackAlvo(aluno);
+    setDiasPack(2);
+    setMenuAbertoId(null);
+  };
+
+  // Libera o Pack manualmente por N dias a partir de agora
+  const handleLiberarPack = async (e) => {
+    e.preventDefault();
+    const dias = Number(diasPack);
+    if (!alunoPackAlvo || !Number.isInteger(dias) || dias < 1 || dias > 365) {
+      return alert('Informe um número de dias entre 1 e 365.');
+    }
+
+    setSubmittingPack(true);
+    const expira = new Date(Date.now() + dias * 86400000).toISOString();
+    const { error } = await supabase
+      .from('profiles')
+      .update({ tipo_acesso: 'pack_temporario', data_expiracao_pack: expira })
+      .eq('id', alunoPackAlvo.id);
+    setSubmittingPack(false);
+
+    if (error) return alert('Erro ao liberar o Pack: ' + error.message);
+    setAlunoPackAlvo(null);
+    carregarDados();
+  };
+
+  const handleRevogarPack = async (aluno) => {
+    setMenuAbertoId(null);
+    if (!window.confirm(`Encerrar agora o Pack de "${aluno.nome}"?`)) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ tipo_acesso: 'pack_expirado', data_expiracao_pack: new Date().toISOString() })
+      .eq('id', aluno.id);
+    if (error) return alert('Erro ao encerrar o Pack: ' + error.message);
+    carregarDados();
+  };
+
   // 5. Abrir Modal de Alterar Senha
   const abrirAlterarSenha = (aluno) => {
     setAlunoSenhaAlvo(aluno);
@@ -206,12 +298,11 @@ export default function AdminAlunos() {
 
     setSubmittingSenha(true);
     try {
-      const { error } = await supabase.rpc('admin_mudar_senha_usuario', {
-        user_id: alunoSenhaAlvo.id,
-        nova_senha: novaSenha.trim()
+      const { data, error } = await supabase.functions.invoke('admin-gerenciar-aluno', {
+        body: { action: 'reset_password', userId: alunoSenhaAlvo.id, novaSenha: novaSenha.trim() },
       });
 
-      if (error) throw error;
+      if (error || data?.error) throw new Error(data?.error || error.message);
 
       alert(`Senha de ${alunoSenhaAlvo.nome} alterada com sucesso!`);
       setModalSenhaOpen(false);
@@ -398,13 +489,33 @@ export default function AdminAlunos() {
 
                             {/* Menu Flutuante de Ações */}
                             {menuAbertoId === aluno.id && (
-                              <div className="absolute right-12 top-10 z-20 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-40 text-left">
+                              <div className="absolute right-12 top-10 z-20 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-48 text-left">
                                 <button
                                   onClick={() => abrirEdicao(aluno)}
                                   className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
                                 >
                                   <Edit className="w-3.5 h-3.5 text-blue-500" /> Editar
                                 </button>
+                                <button
+                                  onClick={() => alternarCortesia(aluno)}
+                                  className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                  <Gift className="w-3.5 h-3.5 text-emerald-500" /> {aluno.acessoLivre ? 'Remover cortesia' : 'Dar cortesia'}
+                                </button>
+                                <button
+                                  onClick={() => abrirLiberarPack(aluno)}
+                                  className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                  <Package className="w-3.5 h-3.5 text-brand-orange" /> Liberar Pack
+                                </button>
+                                {aluno.packAtivo && (
+                                  <button
+                                    onClick={() => handleRevogarPack(aluno)}
+                                    className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                  >
+                                    <Ban className="w-3.5 h-3.5 text-red-500" /> Encerrar Pack
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => abrirAlterarSenha(aluno)}
                                   className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
@@ -662,6 +773,44 @@ export default function AdminAlunos() {
               </div>
             )}
 
+          </div>
+        </div>
+      )}
+      {/* MODAL: LIBERAR PACK MANUALMENTE */}
+      {alunoPackAlvo && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 md:p-8 shadow-2xl border border-slate-100">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-black text-slate-900">Liberar Pack</h3>
+              <button onClick={() => setAlunoPackAlvo(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 font-medium mb-5">
+              Acesso temporário ao Pack para <strong>{alunoPackAlvo.nome}</strong>, contando a partir de agora.
+            </p>
+            <form onSubmit={handleLiberarPack} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Quantidade de dias</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  required
+                  value={diasPack}
+                  onChange={(e) => setDiasPack(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-orange"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setAlunoPackAlvo(null)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors cursor-pointer">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={submittingPack} className="flex-1 py-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
+                  {submittingPack && <Loader2 className="w-4 h-4 animate-spin" />} Liberar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

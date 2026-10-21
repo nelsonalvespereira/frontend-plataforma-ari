@@ -63,20 +63,14 @@ export function useRanking({ turmaId, limite = 50 } = {}) {
     setLoading(true);
     
     try {
-      let query = supabase
-        .from('profiles')
-        .select('id, nome, xp')
-        .order('xp', { ascending: false }) // Traz os maiores XPs primeiro!
-        .limit(limite);
-
-      // Se passou turmaId, filtra só o ranking da turma
-      if (turmaId) {
-        query = query.eq('turma_id', turmaId);
-      }
-
-      const { data, error: dbError } = await query;
+      // A RLS só deixa o aluno ler o próprio profile; o ranking vem de uma função segura
+      // no banco que devolve apenas id, primeiro nome e XP (ver migration do ranking).
+      const { data, error: dbError } = await supabase.rpc('ranking_alunos', {
+        p_turma_id: turmaId || null,
+        p_limite: limite,
+      });
       if (dbError) throw dbError;
-      
+
       setRanking(data || []);
     } catch (err) {
       console.error('Erro no ranking:', err);

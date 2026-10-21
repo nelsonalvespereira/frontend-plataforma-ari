@@ -44,11 +44,13 @@ export default function AdminEditarQuestao() {
       if (turmasData) setTurmas(turmasData);
 
       if (id) {
-        const { data: qData, error } = await supabase
+        const { data: qRaw, error } = await supabase
           .from('questoes')
-          .select('*')
+          .select('*, questoes_gabarito (*)')
           .eq('id', id)
           .single();
+        const gab = Array.isArray(qRaw?.questoes_gabarito) ? qRaw.questoes_gabarito[0] : qRaw?.questoes_gabarito;
+        const qData = qRaw ? { ...qRaw, ...(gab ?? {}) } : null;
 
         if (!error && qData) {
           setTurmaId(qData.turma_id || '');
@@ -169,9 +171,6 @@ export default function AdminEditarQuestao() {
         blocos_enunciado: blocosEnunciadoProntos,
         imagem_url: imagemPrincipalUrl,
         alternativas: alternativasFormatadas,
-        resposta_correta: respostaCorreta,
-        comentario,
-        video_resolucao_url: urlVideoFormatada,
         ano: parseInt(ano),
         banca,
       };
@@ -182,6 +181,18 @@ export default function AdminEditarQuestao() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // O gabarito fica em tabela própria (só admin lê).
+      const { error: erroGabarito } = await supabase.from('questoes_gabarito').upsert(
+        {
+          questao_id: id,
+          resposta_correta: respostaCorreta,
+          comentario: comentario || null,
+          video_resolucao_url: urlVideoFormatada || null,
+        },
+        { onConflict: 'questao_id' },
+      );
+      if (erroGabarito) throw erroGabarito;
 
       setSucesso(true);
       setTimeout(() => {

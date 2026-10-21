@@ -412,13 +412,18 @@ enabled = true
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
-[functions.create-checkout-session]
+[functions.criar-checkout-stripe]
+enabled = true
+verify_jwt = false   # o login é validado dentro da função
+
+[functions.portal-cliente]
 enabled = true
 verify_jwt = false
-import_map = "./functions/create-checkout-session/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/create-checkout-session/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/create-checkout-session/*.html" ]
+
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false   # quem chama é o Stripe; a segurança é a assinatura do webhook
+
+[functions.admin-gerenciar-aluno]
+enabled = true
+verify_jwt = false

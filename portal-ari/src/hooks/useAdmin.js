@@ -67,7 +67,7 @@ export function useAdminQuestoes({ busca, turmaId } = {}) {
     setLoading(true);
     let query = supabase
       .from('questoes')
-      .select('id, enunciado, blocos_enunciado, materia, assunto, dificuldade, alternativas, resposta_correta, comentario, imagem_url, banca, ano, turmas ( nome )')
+      .select('id, enunciado, blocos_enunciado, materia, assunto, dificuldade, alternativas, imagem_url, banca, ano, turmas ( nome ), questoes_gabarito ( resposta_correta, comentario )')
       .order('created_at', { ascending: false });
 
     if (turmaId) query = query.eq('turma_id', turmaId);
@@ -75,7 +75,13 @@ export function useAdminQuestoes({ busca, turmaId } = {}) {
 
     const { data, error } = await query;
     if (error) setError(error);
-    else setQuestoes(data ?? []);
+    else {
+      // O gabarito fica em outra tabela (só admin lê); junta de volta para as telas do admin.
+      setQuestoes((data ?? []).map(({ questoes_gabarito: g, ...q }) => ({
+        ...q,
+        ...((Array.isArray(g) ? g[0] : g) ?? {}),
+      })));
+    }
     setLoading(false);
   }, [busca, turmaId]);
 

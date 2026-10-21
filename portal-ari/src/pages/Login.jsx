@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabaseClient';
 
@@ -9,6 +9,7 @@ export default function Login() {
   const [searchParams] = useSearchParams();
   const { signIn, signUp } = useAuth();
 
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,10 +26,17 @@ export default function Login() {
 
     try {
       if (isRegistering) {
+        const nomeLimpo = nome.trim().replace(/\s+/g, ' ');
+        if (nomeLimpo.length < 2) {
+          setErrorMsg('Informe seu nome.');
+          setLoading(false);
+          return;
+        }
+
         const { error } = await signUp({
           email,
           password,
-          nome: email.split('@')[0], // nome provisório até termos um campo próprio
+          nome: nomeLimpo,
           turmaSlug: niche,
         });
 
@@ -111,6 +119,33 @@ export default function Login() {
 
           <form onSubmit={handleAuth} className="space-y-6">
 
+            {isRegistering && (
+              <div>
+                <label htmlFor="nome" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Seu nome
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="nome"
+                    type="text"
+                    required
+                    maxLength={80}
+                    autoComplete="name"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    className="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange transition-all font-medium"
+                    placeholder="Como você quer ser chamado(a)"
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-slate-500 font-medium">
+                  Seu primeiro nome aparece no ranking para os outros alunos.
+                </p>
+              </div>
+            )}
+
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-slate-700 mb-1.5">
                 E-mail
@@ -164,9 +199,9 @@ export default function Login() {
                   </label>
                 </div>
 
-                <a href="#" className="text-sm font-bold text-brand-orange hover:text-orange-600 transition-colors">
+                <Link to="/esqueci-senha" className="text-sm font-bold text-brand-orange hover:text-orange-600 transition-colors">
                   Esqueceu a senha?
-                </a>
+                </Link>
               </div>
             )}
 
