@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import logo from '../assets/logo-ari.jpeg';
 import { useAuth } from '../hooks/useAuth';
+import PlayerProtegido from '../components/PlayerProtegido';
 import { usePackDetalhe, usePackItens, useRestante } from '../hooks/usePack';
 import { abrirMaterialPrivado, formatarRestante, formatarUrlEmbed, linkSeguro, rotuloDuracao, statusDaLive } from '../lib/packUtils';
 
@@ -17,6 +18,10 @@ const ABAS = [
 
 function Player({ url, titulo }) {
   const src = formatarUrlEmbed(url);
+  // YouTube: player protegido (sem acesso ao YouTube, marca d'água com o aluno).
+  if (src.includes('youtube.com/embed/')) {
+    return <PlayerProtegido key={src} url={src} titulo={titulo} className="border border-slate-800 shadow-xl" />;
+  }
   if (!src) {
     return (
       <div className="aspect-video bg-slate-900 rounded-2xl flex items-center justify-center text-slate-500 text-sm font-medium">

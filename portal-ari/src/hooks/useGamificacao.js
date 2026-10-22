@@ -17,6 +17,12 @@ export function useGamificacao(turmaId, metaSemanalDias = 5) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Recalcula XP e sequência no banco (a sequência zera sozinha se o aluno parou de estudar).
+      // Se a função ainda não existir no banco, segue só com a leitura.
+      await supabase.rpc('atualizar_minha_gamificacao').then(({ error }) => {
+        if (error) console.warn('Gamificação não recalculada:', error.message);
+      });
+
       // Fazemos APENAS UMA busca na tabela, pegando todas as colunas de uma vez
       const { data, error: dbError } = await supabase
         .from('profiles')

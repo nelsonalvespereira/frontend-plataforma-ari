@@ -1,8 +1,6 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileQuestion, Video, Calendar, Settings, FolderTree, Package, Radio } from 'lucide-react';
-import BarraNavMobile from '../components/BarraNavMobile';
-import { supabase } from '../lib/supabaseClient';
+import { NavLink } from 'react-router-dom';
+import { LayoutDashboard, Users, FileQuestion, Video, Calendar, Settings, FolderTree, Package } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Visão Geral', icon: LayoutDashboard, end: true },
@@ -15,21 +13,6 @@ const NAV_ITEMS = [
   { to: '/admin/pack', label: 'Pack Avulso', icon: Package },
 ];
 
-// Celular: 4 atalhos na barra do rodapé; o resto na gaveta "Mais".
-const BARRA_MOBILE = [
-  { to: '/admin', label: 'Início', icon: LayoutDashboard, end: true },
-  { to: '/admin/alunos', label: 'Alunos', icon: Users },
-  { to: '/admin/simulados-questoes', label: 'Questões', icon: FileQuestion, prefixos: ['/admin/questao', '/admin/nova-questao', '/admin/editar-questao', '/admin/novo-simulado'] },
-  { to: '/admin/pack', label: 'Packs', icon: Package },
-];
-const MAIS_MOBILE = [
-  { to: '/admin/assuntos', label: 'Assuntos', icon: FolderTree },
-  { to: '/admin/modulos', label: 'Módulos e Aulas', icon: Video },
-  { to: '/admin/aulas-lives', label: 'Aulas e Lives', icon: Radio },
-  { to: '/admin/cronograma', label: 'Plano de Estudos', icon: Calendar },
-  { to: '/admin/configuracoes', label: 'Configurações', icon: Settings },
-];
-
 const navLinkClass = ({ isActive }) =>
   `flex items-center px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors ${
     isActive
@@ -38,15 +21,7 @@ const navLinkClass = ({ isActive }) =>
   }`;
 
 export default function AdminSidebar() {
-  const navigate = useNavigate();
-  const sair = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
-
   return (
-    <>
-    <BarraNavMobile itens={BARRA_MOBILE} maisItens={MAIS_MOBILE} onSair={sair} />
     <aside className="w-64 bg-[#1e2330] flex-col hidden lg:flex shrink-0">
       <div className="h-16 flex items-center px-6 border-b border-slate-700/50">
         <span className="text-lg font-black text-white tracking-tight">
@@ -69,6 +44,5 @@ export default function AdminSidebar() {
         </NavLink>
       </div>
     </aside>
-    </>
   );
 }

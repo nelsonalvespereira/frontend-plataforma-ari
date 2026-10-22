@@ -8,10 +8,12 @@ import { LayoutGrid, LogOut, X } from 'lucide-react';
 //   maisItens -> o resto do menu, na gaveta "Mais"
 //   onSair    -> botão "Sair da conta" no fim da gaveta
 
-// Reserva espaço no fim das páginas para a barra não cobrir o conteúdo.
+// Reserva espaço no fim das páginas para a barra não cobrir o conteúdo
+// (<main> da página ou, se ela não usar <main>, um elemento com a classe area-nav-mobile).
 const CSS_MOBILE = `
 @media (max-width: 1023.98px) {
-  body.com-nav-mobile main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  body.com-nav-mobile main,
+  body.com-nav-mobile .area-nav-mobile { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 }
 @keyframes gaveta-sobe { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes gaveta-fundo { from { opacity: 0; } to { opacity: 1; } }

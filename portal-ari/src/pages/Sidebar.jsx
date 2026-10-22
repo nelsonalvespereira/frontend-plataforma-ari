@@ -31,7 +31,9 @@ const BARRA_MOBILE = [
   { to: '/packs', label: 'Packs', icon: ShoppingBag, prefixos: ['/pack/'] },
 ];
 
-export default function Sidebar() {
+// ocultarNoComputador: telas de "foco" (videoaula) escondem a barra lateral no computador
+// para o conteúdo ganhar espaço. No celular a barra do rodapé continua aparecendo.
+export default function Sidebar({ ocultarNoComputador = false }) {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
 
@@ -55,7 +57,7 @@ export default function Sidebar() {
   return (
     <>
     <BarraNavMobile itens={BARRA_MOBILE} maisItens={maisItens} onSair={sair} />
-    <aside className="w-64 bg-slate-950 flex-col hidden lg:flex shrink-0">
+    <aside className={`w-64 bg-slate-950 flex-col hidden shrink-0 ${ocultarNoComputador ? '' : 'lg:flex'}`}>
       <div className="h-16 flex items-center gap-2.5 px-6 border-b border-slate-800/60">
         <img
           src={logoAri}
@@ -105,6 +107,7 @@ export default function Sidebar() {
           Lives
         </NavLink>
 
+        {/* Loja de Packs: fica ativo também dentro de um pack (/pack/...) */}
         <NavLink
           to="/packs"
           className={({ isActive }) =>
