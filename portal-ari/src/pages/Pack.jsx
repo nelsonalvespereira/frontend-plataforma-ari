@@ -314,7 +314,7 @@ export default function Pack() {
             <Link to="/packs" title="Voltar aos packs" className="p-2 -ml-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg">
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <img src={logo} alt="Aritmática Gabaritando" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+            <img src={logo} alt="Arimática Gabaritando" className="w-9 h-9 rounded-lg object-cover shrink-0" />
             <span className="font-black tracking-tight truncate">{pack?.nome || 'Pack Avulso'}</span>
           </div>
 

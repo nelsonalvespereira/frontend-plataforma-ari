@@ -23,7 +23,7 @@ export default function PackExpirado() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6 font-sans">
       <div className="max-w-md w-full text-center space-y-6">
-        <img src={logo} alt="Aritmática Gabaritando" className="w-14 h-14 rounded-xl object-cover mx-auto" />
+        <img src={logo} alt="Arimática Gabaritando" className="w-14 h-14 rounded-xl object-cover mx-auto" />
         <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/20 rounded-full flex items-center justify-center mx-auto">
           <Hourglass className="w-8 h-8 text-brand-orange" />
         </div>
