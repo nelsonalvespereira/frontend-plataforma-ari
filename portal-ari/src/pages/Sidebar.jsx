@@ -61,11 +61,11 @@ export default function Sidebar({ ocultarNoComputador = false }) {
       <div className="h-16 flex items-center gap-2.5 px-6 border-b border-slate-800/60">
         <img
           src={logoAri}
-          alt="Arimática Gabaritando"
+          alt="Aritmática Gabaritando"
           className="w-8 h-8 rounded-lg object-cover shrink-0"
         />
         <span className="text-sm font-black text-white tracking-wide leading-tight">
-          ARIMÁTICA <span className="text-brand-orange">GABARITANDO</span>
+          ARITMÁTICA <span className="text-brand-orange">GABARITANDO</span>
         </span>
       </div>
 

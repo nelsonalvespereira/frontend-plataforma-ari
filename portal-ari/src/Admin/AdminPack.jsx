@@ -61,6 +61,8 @@ export default function AdminPack() {
   const [editandoPack, setEditandoPack] = useState(null);
   const [formPack, setFormPack] = useState(PACK_VAZIO);
   const [liberando, setLiberando] = useState(null); // pack escolhido para liberar a um aluno
+  const [ajustando, setAjustando] = useState(null); // compra cujo prazo o admin está mudando
+  const [novoFim, setNovoFim] = useState('');
   const [formLiberar, setFormLiberar] = useState({ user_id: '', dias: 2 });
   const [compras, setCompras] = useState([]);
   const [turmas, setTurmas] = useState([]);
@@ -176,6 +178,35 @@ export default function AdminPack() {
     const { error } = await supabase.from('planos').update({ ativo: !p.ativo }).eq('price_id', p.price_id);
     if (error) alert('Erro: ' + error.message);
     else carregar();
+  };
+
+  const abrirAjuste = (c) => {
+    setAjustando(c);
+    // Se já venceu, sugere a partir de agora.
+    const base = new Date(Math.max(new Date(c.expira_em).getTime(), Date.now()));
+    setNovoFim(paraInputLocal(base.toISOString()));
+  };
+
+  const somarDias = (dias) => {
+    const atual = novoFim ? new Date(novoFim) : new Date();
+    setNovoFim(paraInputLocal(new Date(atual.getTime() + dias * 86400000).toISOString()));
+  };
+
+  const salvarAjuste = async (e) => {
+    e.preventDefault();
+    if (!ajustando || !novoFim) return;
+    setSalvando(true);
+    const { error } = await supabase.rpc('admin_definir_fim_pack', {
+      p_session_id: ajustando.stripe_session_id,
+      p_fim: new Date(novoFim).toISOString(),
+    });
+    setSalvando(false);
+    if (error) {
+      alert('Erro ao ajustar o prazo: ' + error.message);
+      return;
+    }
+    setAjustando(null);
+    carregar();
   };
 
   const encerrarCompra = async (c) => {
@@ -322,34 +353,34 @@ export default function AdminPack() {
       <AdminSidebar />
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 px-6 md:px-8 flex justify-between items-center shrink-0">
-          <div>
+        <header className="h-16 bg-white border-b border-slate-200 px-4 md:px-8 flex justify-between items-center gap-3 shrink-0">
+          <div className="min-w-0">
             <h2 className="text-lg font-black text-slate-900 leading-tight flex items-center gap-2">
               <Package className="w-5 h-5 text-brand-orange" /> Packs Avulsos
             </h2>
-            <p className="text-xs font-medium text-slate-500">
-              {packs.length} packs · {itens.length} itens de conteúdo · {compras.length} compras recentes
+            <p className="text-xs font-medium text-slate-500 truncate">
+              {packs.length} packs · {itens.length} itens<span className="hidden sm:inline"> de conteúdo</span> · {compras.length} compras<span className="hidden sm:inline"> recentes</span>
             </p>
           </div>
           {aba === 'packs' && (
             <button
               onClick={abrirNovoPack}
-              className="flex items-center gap-2 px-5 py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
+              className="shrink-0 flex items-center gap-2 px-3.5 md:px-5 py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> Novo pack
+              <Plus className="w-4 h-4" /> Novo<span className="hidden sm:inline"> pack</span>
             </button>
           )}
           {aba === 'conteudo' && (
             <button
               onClick={abrirNovo}
-              className="flex items-center gap-2 px-5 py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
+              className="shrink-0 flex items-center gap-2 px-3.5 md:px-5 py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> Novo item
+              <Plus className="w-4 h-4" /> Novo<span className="hidden sm:inline"> item</span>
             </button>
           )}
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto space-y-5">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex p-1 bg-white border border-slate-200 rounded-xl w-fit">
@@ -412,7 +443,45 @@ export default function AdminPack() {
                 <Loader2 className="w-5 h-5 animate-spin" /> Carregando...
               </div>
             ) : aba === 'packs' ? (
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
+              <>
+              <div className="md:hidden space-y-3">
+                {packs.map((p) => (
+                  <div key={p.price_id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-900 text-sm">{p.nome}</p>
+                        <p className="text-[11px] text-slate-400 font-mono truncate">{p.price_id}</p>
+                      </div>
+                      <span className={`shrink-0 inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${p.ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {p.ativo ? 'À venda' : 'Oculto'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 font-medium mt-2">
+                      {fmtValor(p.valor_centavos)} · {p.duracao_dias} {p.duracao_dias === 1 ? 'dia' : 'dias'} · {nomeDaTurma(p.turma_id) || 'Todas as turmas'} · {itensPorPack[p.price_id] || 0} itens
+                    </p>
+                    <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100 -mb-1">
+                      <Link to={`/pack/${encodeURIComponent(p.price_id)}`} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-600 rounded-lg active:bg-slate-100">
+                        <ExternalLink className="w-3.5 h-3.5" /> Ver
+                      </Link>
+                      <button onClick={() => abrirLiberar(p)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-emerald-700 rounded-lg active:bg-emerald-50 cursor-pointer">
+                        <Gift className="w-3.5 h-3.5" /> Liberar
+                      </button>
+                      <button onClick={() => alternarPackAtivo(p)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-600 rounded-lg active:bg-slate-100 cursor-pointer">
+                        {p.ativo ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />} {p.ativo ? 'Ocultar' : 'Vender'}
+                      </button>
+                      <button onClick={() => abrirEdicaoPack(p)} className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-blue-600 rounded-lg active:bg-blue-50 cursor-pointer">
+                        <Pencil className="w-3.5 h-3.5" /> Editar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {packs.length === 0 && (
+                  <p className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-400 font-medium">
+                    Nenhum pack cadastrado. Crie o produto no Stripe com preço de pagamento único e toque em "Novo".
+                  </p>
+                )}
+              </div>
+              <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
@@ -465,8 +534,49 @@ export default function AdminPack() {
                   </tbody>
                 </table>
               </div>
+              </>
             ) : aba === 'conteudo' ? (
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
+              <>
+              <div className="md:hidden space-y-3">
+                {lista.map((item) => {
+                  const T = TIPOS[item.tipo];
+                  return (
+                    <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 text-sm">{item.titulo}</p>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            <T.icon className="w-3.5 h-3.5 text-brand-orange" /> {T.label}
+                            <span>·</span>
+                            {nomeDoPack(item.pack_price_id) || <span className="text-amber-600 font-bold">Sem pack</span>}
+                            {item.data_hora && <><span>·</span>{fmtData(item.data_hora)}</>}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${item.ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {item.ativo ? 'Publicado' : 'Oculto'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100 -mb-1">
+                        <button onClick={() => alternarAtivo(item)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-600 rounded-lg active:bg-slate-100 cursor-pointer">
+                          {item.ativo ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />} {item.ativo ? 'Ocultar' : 'Publicar'}
+                        </button>
+                        <button onClick={() => abrirEdicao(item)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-blue-600 rounded-lg active:bg-blue-50 cursor-pointer">
+                          <Pencil className="w-3.5 h-3.5" /> Editar
+                        </button>
+                        <button onClick={() => excluir(item)} className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-red-600 rounded-lg active:bg-red-50 cursor-pointer">
+                          <Trash2 className="w-3.5 h-3.5" /> Excluir
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {lista.length === 0 && (
+                  <p className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-400 font-medium">
+                    Nenhum item ainda. Toque em "Novo" para publicar o aulão, as questões ou uma live.
+                  </p>
+                )}
+              </div>
+              <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
@@ -528,8 +638,54 @@ export default function AdminPack() {
                   </tbody>
                 </table>
               </div>
+              </>
             ) : (
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
+              <>
+              <div className="md:hidden space-y-3">
+                {compras.map((c) => {
+                  const ativa = new Date(c.expira_em) > new Date();
+                  return (
+                    <div key={c.stripe_session_id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 text-sm truncate">{c.profiles?.nome || '—'}</p>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5 truncate">
+                            {nomeDoPack(c.price_id) || '—'} · {c.stripe_session_id.startsWith('manual:') ? 'Cortesia' : fmtValor(c.valor_centavos)}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${ativa ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {ativa ? 'Ativo' : 'Expirado'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-medium mt-2">
+                        Comprado em {fmtData(c.comprado_em)} · acesso até {fmtData(c.expira_em)}
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => abrirAjuste(c)}
+                          className="flex-1 py-2 text-xs font-bold text-blue-700 bg-blue-50 active:bg-blue-100 rounded-lg cursor-pointer"
+                        >
+                          {ativa ? 'Ajustar prazo' : 'Reativar'}
+                        </button>
+                        {ativa && (
+                          <button
+                            onClick={() => encerrarCompra(c)}
+                            className="flex-1 py-2 text-xs font-bold text-red-600 bg-red-50 active:bg-red-100 rounded-lg cursor-pointer"
+                          >
+                            Encerrar acesso
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {compras.length === 0 && (
+                  <p className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-400 font-medium">
+                    Nenhuma compra de pack ainda.
+                  </p>
+                )}
+              </div>
+              <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
@@ -555,6 +711,12 @@ export default function AdminPack() {
                             </span>
                           </td>
                           <td className="px-6 py-3.5 whitespace-nowrap text-right">
+                            <button
+                              onClick={() => abrirAjuste(c)}
+                              className="text-xs font-bold text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg cursor-pointer"
+                            >
+                              {ativa ? 'Ajustar prazo' : 'Reativar'}
+                            </button>
                             {ativa && (
                               <button
                                 onClick={() => encerrarCompra(c)}
@@ -577,6 +739,7 @@ export default function AdminPack() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </div>
         </div>
@@ -762,7 +925,10 @@ export default function AdminPack() {
                   <input required type="number" min="1" max="365" value={formPack.duracao_dias} onChange={setP('duracao_dias')} className={campo} />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 -mt-2">O valor cobrado é sempre o do preço no Stripe; este campo é só para exibir na loja.</p>
+              <p className="text-[11px] text-slate-500 -mt-2">
+                O valor cobrado é sempre o do preço no Stripe; este campo é só para exibir na loja.
+                Mudar os dias vale para as próximas compras; para quem já comprou, use "Ajustar prazo" na aba Compras.
+              </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -788,6 +954,44 @@ export default function AdminPack() {
                   Cancelar
                 </button>
                 <button type="submit" disabled={salvando} className="flex-1 py-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
+                  {salvando && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {ajustando && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-slate-100">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-xl font-black text-slate-900">Ajustar prazo</h3>
+              <button onClick={() => setAjustando(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-5">
+              <strong className="text-slate-700">{ajustando.profiles?.nome || 'Aluno'}</strong> · {nomeDoPack(ajustando.price_id) || 'Pack'}.
+              Hoje o acesso vai até <strong className="text-slate-700">{fmtData(ajustando.expira_em)}</strong>.
+            </p>
+            <form onSubmit={salvarAjuste} className="space-y-4">
+              <div>
+                <label className={rotulo}>Novo fim do acesso *</label>
+                <input type="datetime-local" required value={novoFim} onChange={(e) => setNovoFim(e.target.value)} className={campo} />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[1, 7, 30, 60].map((d) => (
+                  <button key={d} type="button" onClick={() => somarDias(d)} className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer">
+                    +{d} {d === 1 ? 'dia' : 'dias'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setAjustando(null)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold cursor-pointer">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={salvando} className="flex-1 py-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
                   {salvando && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
                 </button>
               </div>

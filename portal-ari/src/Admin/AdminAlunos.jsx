@@ -75,6 +75,8 @@ export default function AdminAlunos() {
   // Estado do Modal de Pack (liberação manual)
   const [alunoPackAlvo, setAlunoPackAlvo] = useState(null);
   const [diasPack, setDiasPack] = useState(2);
+  const [packsDisponiveis, setPacksDisponiveis] = useState([]);
+  const [packEscolhido, setPackEscolhido] = useState('');
   const [submittingPack, setSubmittingPack] = useState(false);
 
   // Estado do Modal de Senha
@@ -120,8 +122,9 @@ export default function AdminAlunos() {
       // Assinaturas ativas e nomes dos planos, para mostrar o acesso REAL de cada aluno
       const [{ data: assinData }, { data: planosData }] = await Promise.all([
         supabase.from('assinaturas').select('user_id, price_id, status').in('status', ['active', 'trialing']),
-        supabase.from('planos').select('price_id, nome'),
+        supabase.from('planos').select('price_id, nome, tipo, duracao_dias'),
       ]);
+      setPacksDisponiveis((planosData || []).filter((pl) => pl.tipo === 'pack'));
       const assinPorUsuario = {};
       (assinData || []).forEach((a) => { if (!assinPorUsuario[a.user_id]) assinPorUsuario[a.user_id] = a; });
       const nomePlano = Object.fromEntries((planosData || []).map((pl) => [pl.price_id, pl.nome]));
@@ -145,7 +148,8 @@ export default function AdminAlunos() {
           id: p.id,
           nome: p.nome || 'Sem Nome',
           email: 'Aluno(a)',
-          turma: p.turmas?.nome || 'Geral',
+          // Quem só tem (ou teve) pack não pertence a uma turma até assinar.
+          turma: assinatura || p.acesso_livre ? (p.turmas?.nome || 'Geral') : '—',
           turma_id: p.turmas?.id || null,
           plano,
           status,
@@ -240,8 +244,10 @@ export default function AdminAlunos() {
   };
 
   const abrirLiberarPack = (aluno) => {
+    const primeiro = packsDisponiveis[0];
     setAlunoPackAlvo(aluno);
-    setDiasPack(2);
+    setPackEscolhido(primeiro?.price_id ?? '');
+    setDiasPack(primeiro?.duracao_dias ?? 2);
     setMenuAbertoId(null);
   };
 
@@ -253,12 +259,15 @@ export default function AdminAlunos() {
       return alert('Informe um número de dias entre 1 e 365.');
     }
 
+    if (!packEscolhido) return alert('Escolha qual pack liberar.');
+
+    // Registra como compra de cortesia (valor 0): é a compra que libera o conteúdo do pack.
     setSubmittingPack(true);
-    const expira = new Date(Date.now() + dias * 86400000).toISOString();
-    const { error } = await supabase
-      .from('profiles')
-      .update({ tipo_acesso: 'pack_temporario', data_expiracao_pack: expira })
-      .eq('id', alunoPackAlvo.id);
+    const { error } = await supabase.rpc('admin_liberar_pack', {
+      p_user_id: alunoPackAlvo.id,
+      p_price_id: packEscolhido,
+      p_dias: dias,
+    });
     setSubmittingPack(false);
 
     if (error) return alert('Erro ao liberar o Pack: ' + error.message);
@@ -368,6 +377,51 @@ export default function AdminAlunos() {
   };
 
   // Filtragem de dados
+
+  // Menu de ações do aluno (tabela no computador e cartões no celular).
+  const menuAcoes = (aluno, posicao) => (
+    <div className={`${posicao} z-20 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-48 text-left`}>
+      <button
+        onClick={() => abrirEdicao(aluno)}
+        className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+      >
+        <Edit className="w-3.5 h-3.5 text-blue-500" /> Editar
+      </button>
+      <button
+        onClick={() => alternarCortesia(aluno)}
+        className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+      >
+        <Gift className="w-3.5 h-3.5 text-emerald-500" /> {aluno.acessoLivre ? 'Remover cortesia' : 'Dar cortesia'}
+      </button>
+      <button
+        onClick={() => abrirLiberarPack(aluno)}
+        className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+      >
+        <Package className="w-3.5 h-3.5 text-brand-orange" /> Liberar Pack
+      </button>
+      {aluno.packAtivo && (
+        <button
+          onClick={() => handleRevogarPack(aluno)}
+          className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+        >
+          <Ban className="w-3.5 h-3.5 text-red-500" /> Encerrar Pack
+        </button>
+      )}
+      <button
+        onClick={() => abrirAlterarSenha(aluno)}
+        className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+      >
+        <KeyRound className="w-3.5 h-3.5 text-amber-500" /> Redefinir Senha
+      </button>
+      <button
+        onClick={() => handleExcluirAluno(aluno.id, aluno.nome)}
+        className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+      >
+        <Trash2 className="w-3.5 h-3.5" /> Excluir
+      </button>
+    </div>
+  );
+
   const alunosFiltrados = alunos.filter((aluno) => {
     const bateBusca = aluno.nome.toLowerCase().includes(busca.toLowerCase());
     const bateTurma = turmaFiltro === 'Todas' || aluno.turma === turmaFiltro;
@@ -380,7 +434,7 @@ export default function AdminAlunos() {
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* HEADER */}
-        <header className="h-16 bg-white border-b border-slate-200 px-6 md:px-8 flex justify-between items-center shrink-0">
+        <header className="h-16 bg-white border-b border-slate-200 px-4 md:px-8 flex justify-between items-center shrink-0">
           <div>
             <h2 className="text-lg font-black text-slate-900 leading-tight">Gestão de Alunos</h2>
             <p className="text-xs font-medium text-slate-500">
@@ -394,12 +448,12 @@ export default function AdminAlunos() {
         </header>
 
         {/* CONTEÚDO */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="max-w-6xl mx-auto space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="max-w-6xl mx-auto space-y-4 md:space-y-5">
             
             {/* BARRA DE AÇÕES */}
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="relative flex-1">
+            <div className="grid grid-cols-2 md:flex md:flex-row gap-2 md:gap-3">
+              <div className="relative col-span-2 md:flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
@@ -414,7 +468,7 @@ export default function AdminAlunos() {
                 <select
                   value={turmaFiltro}
                   onChange={(e) => setTurmaFiltro(e.target.value)}
-                  className="appearance-none bg-white border border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors"
+                  className="w-full appearance-none bg-white border border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors"
                 >
                   {turmas.map((t) => (
                     <option key={t} value={t}>{t}</option>
@@ -427,20 +481,57 @@ export default function AdminAlunos() {
                 onClick={() => setModalOpen(true)}
                 className="flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-bold text-sm rounded-xl transition-colors shrink-0 shadow-sm shadow-orange-500/20"
               >
-                <UserPlus className="w-4 h-4" /> Convidar Aluno
+                <UserPlus className="w-4 h-4" /> Convidar<span className="hidden sm:inline"> Aluno</span>
               </button>
             </div>
 
             {/* TABELA DE ALUNOS */}
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 md:overflow-hidden shadow-sm">
+              <div className="md:overflow-x-auto">
                 {loading ? (
                   <div className="py-16 flex flex-col items-center justify-center text-slate-400">
                     <Loader2 className="w-8 h-8 animate-spin mb-2" />
                     <p className="text-sm font-medium">Buscando alunos no banco...</p>
                   </div>
                 ) : (
-                  <table className="w-full text-left border-collapse">
+                  <>
+                  {/* Celular: um cartão por aluno */}
+                  <ul className="md:hidden divide-y divide-slate-100">
+                    {alunosFiltrados.map((aluno) => (
+                      <li key={aluno.id} className="relative flex items-start gap-3 px-4 py-3.5">
+                        <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
+                          {iniciais(aluno.nome)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 text-sm truncate">{aluno.nome}</span>
+                            <span className={`shrink-0 inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${STATUS_STYLE[aluno.status] || STATUS_STYLE.Ativo}`}>
+                              {aluno.status}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5 truncate">
+                            {aluno.plano}{aluno.turma !== '—' ? ` · ${aluno.turma}` : ''}
+                          </p>
+                          <p className="text-[11px] text-slate-400 font-medium mt-0.5">Cadastro em {aluno.cadastro}</p>
+                        </div>
+                        <button
+                          onClick={() => setMenuAbertoId(menuAbertoId === aluno.id ? null : aluno.id)}
+                          aria-label="Ações"
+                          className="p-2 -mr-2 text-slate-400 hover:text-brand-orange rounded-lg shrink-0 cursor-pointer"
+                        >
+                          <MoreHorizontal className="w-5 h-5" />
+                        </button>
+                        {menuAbertoId === aluno.id && menuAcoes(aluno, 'absolute right-4 top-12')}
+                      </li>
+                    ))}
+                    {alunosFiltrados.length === 0 && (
+                      <li className="px-4 py-12 text-center text-sm text-slate-400 font-medium">
+                        Nenhum aluno encontrado com os filtros aplicados.
+                      </li>
+                    )}
+                  </ul>
+
+                  <table className="hidden md:table w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-100">
                         <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Aluno</th>
@@ -487,49 +578,7 @@ export default function AdminAlunos() {
                               <MoreHorizontal className="w-4.5 h-4.5" />
                             </button>
 
-                            {/* Menu Flutuante de Ações */}
-                            {menuAbertoId === aluno.id && (
-                              <div className="absolute right-12 top-10 z-20 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-48 text-left">
-                                <button
-                                  onClick={() => abrirEdicao(aluno)}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                                >
-                                  <Edit className="w-3.5 h-3.5 text-blue-500" /> Editar
-                                </button>
-                                <button
-                                  onClick={() => alternarCortesia(aluno)}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                                >
-                                  <Gift className="w-3.5 h-3.5 text-emerald-500" /> {aluno.acessoLivre ? 'Remover cortesia' : 'Dar cortesia'}
-                                </button>
-                                <button
-                                  onClick={() => abrirLiberarPack(aluno)}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                                >
-                                  <Package className="w-3.5 h-3.5 text-brand-orange" /> Liberar Pack
-                                </button>
-                                {aluno.packAtivo && (
-                                  <button
-                                    onClick={() => handleRevogarPack(aluno)}
-                                    className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                                  >
-                                    <Ban className="w-3.5 h-3.5 text-red-500" /> Encerrar Pack
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => abrirAlterarSenha(aluno)}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                                >
-                                  <KeyRound className="w-3.5 h-3.5 text-amber-500" /> Redefinir Senha
-                                </button>
-                                <button
-                                  onClick={() => handleExcluirAluno(aluno.id, aluno.nome)}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" /> Excluir
-                                </button>
-                              </div>
-                            )}
+                            {menuAbertoId === aluno.id && menuAcoes(aluno, 'absolute right-12 top-10')}
                           </td>
                         </tr>
                       ))}
@@ -543,6 +592,7 @@ export default function AdminAlunos() {
                       )}
                     </tbody>
                   </table>
+                  </>
                 )}
               </div>
             </div>
@@ -787,9 +837,30 @@ export default function AdminAlunos() {
               </button>
             </div>
             <p className="text-sm text-slate-600 font-medium mb-5">
-              Acesso temporário ao Pack para <strong>{alunoPackAlvo.nome}</strong>, contando a partir de agora.
+              Acesso temporário (cortesia) para <strong>{alunoPackAlvo.nome}</strong>. Se ele já tiver este pack ativo, os dias são somados.
             </p>
             <form onSubmit={handleLiberarPack} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pack</label>
+                {packsDisponiveis.length === 0 ? (
+                  <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    Nenhum pack cadastrado. Crie um em Packs Avulsos → aba Packs.
+                  </p>
+                ) : (
+                  <select
+                    required
+                    value={packEscolhido}
+                    onChange={(e) => {
+                      setPackEscolhido(e.target.value);
+                      const pk = packsDisponiveis.find((x) => x.price_id === e.target.value);
+                      if (pk?.duracao_dias) setDiasPack(pk.duracao_dias);
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-orange"
+                  >
+                    {packsDisponiveis.map((pk) => <option key={pk.price_id} value={pk.price_id}>{pk.nome}</option>)}
+                  </select>
+                )}
+              </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Quantidade de dias</label>
                 <input

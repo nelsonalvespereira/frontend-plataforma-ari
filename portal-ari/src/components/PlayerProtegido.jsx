@@ -78,6 +78,8 @@ const PlayerProtegido = forwardRef(function PlayerProtegido({ url, titulo, inici
   const [pronto, setPronto] = useState(false);
   const [tocando, setTocando] = useState(false);
   const [terminou, setTerminou] = useState(false);
+  const [jaComecou, setJaComecou] = useState(false); // antes do 1º play mostramos a capa (esconde título e "Assistir no YouTube")
+  const tocandoRef = useRef(false); // valor atual de "tocando", lido quando o celular gira
   const [carregando, setCarregando] = useState(true);
   const [tempo, setTempo] = useState(0);
   const [duracao, setDuracao] = useState(0);
@@ -95,6 +97,7 @@ const PlayerProtegido = forwardRef(function PlayerProtegido({ url, titulo, inici
     setPronto(false);
     setCarregando(true);
     setTerminou(false);
+    setJaComecou(false);
     setTocando(false);
     setTempo(0);
 
@@ -121,6 +124,8 @@ const PlayerProtegido = forwardRef(function PlayerProtegido({ url, titulo, inici
           onStateChange: (e) => {
             const st = e.data;
             setTocando(st === 1);
+            tocandoRef.current = st === 1;
+            if (st === 1) setJaComecou(true);
             setCarregando(st === 3);
             if (st === 1) {
               setTerminou(false);
@@ -202,6 +207,35 @@ const PlayerProtegido = forwardRef(function PlayerProtegido({ url, titulo, inici
     else setTelaCheiaCss(true); // iPhone: ocupa a tela por CSS
   };
 
+  // Celular: deitar o aparelho com o vídeo tocando entra na tela cheia sozinho; levantar, sai.
+  useEffect(() => {
+    const mq = window.matchMedia?.('(orientation: landscape) and (max-height: 500px)');
+    if (!mq) return undefined;
+    const aoGirar = () => {
+      if (mq.matches) {
+        if (tocandoRef.current && !document.fullscreenElement) setTelaCheiaCss(true);
+      } else {
+        setTelaCheiaCss(false);
+      }
+    };
+    mq.addEventListener?.('change', aoGirar);
+    return () => mq.removeEventListener?.('change', aoGirar);
+  }, []);
+
+  // iPhone (tela cheia por CSS): trava a rolagem da página por baixo e fecha com Esc.
+  useEffect(() => {
+    if (!telaCheiaCss) return undefined;
+    window.scrollTo(0, 0);
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const aoTeclarEsc = (e) => { if (e.key === 'Escape') setTelaCheiaCss(false); };
+    window.addEventListener('keydown', aoTeclarEsc);
+    return () => {
+      document.body.style.overflow = antes;
+      window.removeEventListener('keydown', aoTeclarEsc);
+    };
+  }, [telaCheiaCss]);
+
   useEffect(() => {
     const aoMudar = () => setTelaCheia(!!(document.fullscreenElement || document.webkitFullscreenElement));
     document.addEventListener('fullscreenchange', aoMudar);
@@ -262,9 +296,14 @@ const PlayerProtegido = forwardRef(function PlayerProtegido({ url, titulo, inici
       onMouseMove={mostrarControles}
       onTouchStart={mostrarControles}
       onContextMenu={(e) => e.preventDefault()}
-      className={`relative bg-black overflow-hidden select-none outline-none group ${
-        telaCheiaCss ? 'fixed inset-0 z-[100] rounded-none' : cheia ? '' : `aspect-video rounded-xl md:rounded-2xl ${className}`
-      } ${cheia ? 'w-full h-full' : ''}`}
+      // ATENÇÃO: "relative" e "fixed" não podem ir juntos (o relative vence e o player some).
+      className={`bg-black overflow-hidden select-none outline-none group ${
+        telaCheiaCss
+          ? 'fixed inset-0 z-[100] rounded-none'
+          : telaCheia
+          ? 'relative w-full h-full'
+          : `relative w-full aspect-video rounded-xl md:rounded-2xl ${className}`
+      }`}
     >
       {/* Player do YouTube: sem controles próprios e sem receber cliques */}
       <div className="absolute inset-0 pointer-events-none [&>iframe]:w-full [&>iframe]:h-full">
@@ -280,8 +319,22 @@ const PlayerProtegido = forwardRef(function PlayerProtegido({ url, titulo, inici
         className="absolute inset-0 z-10 w-full h-full cursor-pointer"
       />
 
-      {/* Tarjas que cobrem o topo (título/canal) e o canto do logo do YouTube */}
-      <div className={`absolute inset-x-0 top-0 h-16 z-[11] pointer-events-none bg-gradient-to-b from-black/90 to-transparent transition-opacity ${tocando && !mostrarBarra ? 'opacity-0' : 'opacity-100'}`} />
+      {/* Capa antes do primeiro play: a miniatura do vídeo cobre o player inteiro
+          (o YouTube mostra título, canal e "Assistir no YouTube" nesse momento). */}
+      {!jaComecou && (
+        <div
+          className="absolute inset-0 z-[11] pointer-events-none bg-black bg-cover bg-center"
+          style={{ backgroundImage: `url(https://i.ytimg.com/vi/${videoId}/hqdefault.jpg)` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40" />
+        </div>
+      )}
+
+      {/* Pausado no meio: faixa sólida no topo cobre o título e o canal que o YouTube volta a mostrar */}
+      {jaComecou && !tocando && !terminou && (
+        <div className="absolute inset-x-0 top-0 h-[16%] min-h-[44px] z-[11] pointer-events-none bg-black" />
+      )}
+      <div className={`absolute inset-x-0 top-0 h-16 z-[11] pointer-events-none bg-gradient-to-b from-black/80 to-transparent transition-opacity ${tocando && !mostrarBarra ? 'opacity-0' : 'opacity-100'}`} />
 
       {/* Marca d'água com o aluno */}
       {nomeMarca && (
@@ -321,8 +374,13 @@ const PlayerProtegido = forwardRef(function PlayerProtegido({ url, titulo, inici
 
       {/* Barra de controles */}
       <div
+        style={cheia ? {
+          paddingLeft: 'max(12px, env(safe-area-inset-left))',
+          paddingRight: 'max(12px, env(safe-area-inset-right))',
+          paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+        } : undefined}
         className={`absolute inset-x-0 bottom-0 z-[15] px-3 md:px-4 pb-2.5 md:pb-3 pt-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-opacity duration-300 ${
-          mostrarBarra && !terminou ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          mostrarBarra && !terminou ? 'opacity-100 pointer-events-none [&>*]:pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
         <input
