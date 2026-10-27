@@ -96,7 +96,7 @@ export default function Convite() {
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <img src={logo} alt="" className="w-10 h-10 rounded-xl object-cover" />
           <span className="font-black tracking-wide">
-            ARITMÁTICA <span className="text-brand-orange">GABARITANDO</span>
+            ARIMÁTICA <span className="text-brand-orange">GABARITANDO</span>
           </span>
         </div>
 
