@@ -14,6 +14,8 @@ import PagamentoSucesso from './pages/PagamentoSucesso';
 import Pack from './pages/Pack';
 import LojaPacks from './pages/LojaPacks';
 import Convite from './pages/Convite';
+import Termos from './pages/Termos';
+import Privacidade from './pages/Privacidade';
 import PackExpirado from './pages/PackExpirado';
 import Dashboard from './pages/Dashboard';
 import Simulados from './pages/Simulados';
@@ -58,6 +60,8 @@ function App() {
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/convite/:id" element={<Convite />} />
+          <Route path="/termos" element={<Termos />} />
+          <Route path="/privacidade" element={<Privacidade />} />
           <Route path="/pagamento" element={<Pagamento />} />
           <Route path="/pagamento/sucesso" element={<ProtectedRoute><PagamentoSucesso /></ProtectedRoute>} />
 
