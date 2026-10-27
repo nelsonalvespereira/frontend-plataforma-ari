@@ -64,6 +64,7 @@ export default function AdminAlunos() {
     nome: '',
     email: '',
     turmaId: '',
+    cortesia: false,
   });
 
   // Estado do Modal de Edição
@@ -326,6 +327,7 @@ export default function AdminAlunos() {
   };
 
   // 7. Enviar Convite / Cadastrar
+  // Convite: vale uma vez, só para o e-mail convidado, por 14 dias (regras no banco: ver/aceitar_convite).
   const handleSendInvite = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -336,27 +338,22 @@ export default function AdminAlunos() {
         .from('convites')
         .insert([
           {
-            nome: inviteForm.nome,
-            email: inviteForm.email,
-            turma_nome: inviteForm.turmaId,
-            status: 'Pendente',
-            created_at: new Date().toISOString()
-          }
+            nome: inviteForm.nome.trim(),
+            email: inviteForm.email.trim().toLowerCase(),
+            turma_id: inviteForm.turmaId,
+            cortesia: !!inviteForm.cortesia,
+          },
         ])
-        .select()
+        .select('id')
         .single();
 
       if (error) throw error;
 
-      const generatedLink = `${window.location.origin}/cadastro?convite=${data?.id || 'token'}&turma=${encodeURIComponent(inviteForm.turmaId)}`;
-      setInviteLink(generatedLink);
+      setInviteLink(`${window.location.origin}/convite/${data.id}`);
       setInviteSuccess(true);
-      carregarDados();
     } catch (err) {
-      console.error('Erro ao processar convite:', err);
-      const mockFallbackLink = `${window.location.origin}/cadastro?turma=${encodeURIComponent(inviteForm.turmaId)}&email=${encodeURIComponent(inviteForm.email)}`;
-      setInviteLink(mockFallbackLink);
-      setInviteSuccess(true);
+      console.error('Erro ao criar convite:', err);
+      setErrorMessage('Não foi possível criar o convite. Confira se a migration de convites foi executada. (' + (err.message || err) + ')');
     } finally {
       setSubmittingInvite(false);
     }
@@ -373,7 +370,7 @@ export default function AdminAlunos() {
     setInviteSuccess(false);
     setInviteLink('');
     setErrorMessage('');
-    setInviteForm({ nome: '', email: '', turmaId: '' });
+    setInviteForm({ nome: '', email: '', turmaId: '', cortesia: false });
   };
 
   // Filtragem de dados
@@ -773,13 +770,29 @@ export default function AdminAlunos() {
                       className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-orange"
                     >
                       <option value="">Selecione uma turma...</option>
-                      {turmas.filter((t) => t !== 'Todas').map((t) => (
-                        <option key={t} value={t}>{t}</option>
+                      {turmasObjs.map((t) => (
+                        <option key={t.id} value={t.id}>{t.nome}</option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
+
+                <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={inviteForm.cortesia}
+                    onChange={(e) => setInviteForm({ ...inviteForm, cortesia: e.target.checked })}
+                    className="mt-0.5 w-4 h-4 accent-orange-500"
+                    aria-label="Liberar acesso gratuito (cortesia)"
+                  />
+                  <span>
+                    <span className="block text-sm font-bold text-slate-800">Liberar acesso gratuito (cortesia)</span>
+                    <span className="block text-xs text-slate-500">
+                      Marcado: entra com a plataforma liberada, sem pagar. Desmarcado: cria a conta e escolhe um plano.
+                    </span>
+                  </span>
+                </label>
 
                 <div className="pt-2 flex gap-3">
                   <button
@@ -806,8 +819,11 @@ export default function AdminAlunos() {
                 <div>
                   <h4 className="font-black text-slate-900 text-base">Convite Criado com Sucesso!</h4>
                   <p className="text-xs text-slate-500 mt-1">
-                    Envie o link abaixo para <strong>{inviteForm.nome}</strong> acessar a turma <strong>{inviteForm.turmaId}</strong>.
+                    Envie o link para <strong>{inviteForm.nome}</strong> ({inviteForm.email.trim().toLowerCase()}), turma{' '}
+                    <strong>{turmasObjs.find((t) => t.id === inviteForm.turmaId)?.nome || '—'}</strong>
+                    {inviteForm.cortesia ? ', com acesso gratuito' : ''}.
                   </p>
+                  <p className="text-[11px] text-slate-400 mt-1">Vale uma vez, só para esse e-mail, por 14 dias.</p>
                 </div>
 
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2 text-left">
@@ -816,6 +832,17 @@ export default function AdminAlunos() {
                     {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
+
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    `Olá, ${inviteForm.nome.split(' ')[0]}! Aqui está seu convite para a plataforma Aritmática Gabaritando: ${inviteLink}`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2"
+                >
+                  Enviar pelo WhatsApp
+                </a>
 
                 <button onClick={fecharModal} className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl">
                   Concluir
