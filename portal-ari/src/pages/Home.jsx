@@ -327,6 +327,11 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
+      <footer className="py-8 px-6 text-center text-xs text-slate-500 font-medium">
+        © {new Date().getFullYear()} Arimática Gabaritando ·{' '}
+        <Link to="/termos" className="hover:text-slate-900 underline-offset-2 hover:underline">Termos de uso</Link> ·{' '}
+        <Link to="/privacidade" className="hover:text-slate-900 underline-offset-2 hover:underline">Política de privacidade</Link>
+      </footer>
     </div>
   );
 }

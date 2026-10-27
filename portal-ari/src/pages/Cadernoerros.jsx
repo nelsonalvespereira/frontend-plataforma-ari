@@ -3,7 +3,6 @@ import { AlertCircle, Loader2, X, ChevronRight, CheckCircle2 } from 'lucide-reac
 import Sidebar from './Sidebar';
 import { useCadernoErros } from '../hooks/useCadernoErros';
 import QuestaoPreviewCard from '../components/QuestaoPreviewCard';
-import { obterGabarito } from '../hooks/useQuestoes';
 
 const DIFICULDADE_STYLE = {
   facil: 'bg-emerald-50 text-emerald-700',
@@ -15,16 +14,6 @@ const DIFICULDADE_LABEL = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil
 export default function CadernoErros() {
   const { questoes, loading, error, marcarResolvida } = useCadernoErros();
   const [questaoAberta, setQuestaoAberta] = useState(null);
-
-  // Busca o gabarito no servidor (só devolve para questões que o aluno já respondeu ou favoritou).
-  const abrirQuestao = async (q) => {
-    setQuestaoAberta(q);
-    const { gabarito } = await obterGabarito(q.id);
-    if (gabarito) {
-      setQuestaoAberta((atual) => (atual && atual.id === q.id ? { ...atual, ...gabarito } : atual));
-    }
-  };
-
   const [removendoId, setRemovendoId] = useState(null);
 
   // Função para remover ou marcar como resolvida a questão do caderno de erros
@@ -99,7 +88,7 @@ export default function CadernoErros() {
             {!loading && questoes.map((q) => (
               <div
                 key={q.id}
-                onClick={() => abrirQuestao(q)}
+                onClick={() => setQuestaoAberta(q)}
                 className="w-full flex items-center justify-between gap-4 bg-white border border-slate-200 hover:border-red-300 rounded-2xl p-4 text-left transition-all group cursor-pointer shadow-2xs"
               >
                 <div className="min-w-0 flex-1">
@@ -167,7 +156,7 @@ export default function CadernoErros() {
               alternativas={questaoAberta.alternativas || []}
               respostaCorreta={questaoAberta.resposta_correta}
               comentario={questaoAberta.comentario}
-              resolucaoVideoUrl={questaoAberta.resolucao_video_url}
+              resolucaoVideoUrl={questaoAberta.video_resolucao_url || questaoAberta.resolucao_video_url}
             />
           </div>
         </div>

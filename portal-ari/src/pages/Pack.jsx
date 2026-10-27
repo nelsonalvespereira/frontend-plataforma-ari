@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import PlayerProtegido from '../components/PlayerProtegido';
+import AvisoInstalarApp from '../components/AvisoInstalarApp';
 import { usePackDetalhe, usePackItens, useRestante } from '../hooks/usePack';
 import { abrirMaterialPrivado, formatarRestante, formatarUrlEmbed, linkSeguro, rotuloDuracao, statusDaLive } from '../lib/packUtils';
 
@@ -197,6 +198,7 @@ export default function Pack() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-950 font-sans overflow-hidden">
+      <AvisoInstalarApp />
       {/* TOPO: voltar, nome do pack, tempo restante */}
       <header className="h-16 bg-slate-900/80 border-b border-slate-800 px-4 md:px-6 flex items-center gap-3 md:gap-4 shrink-0">
         <Link to="/packs" className="p-2 bg-slate-800 rounded-xl hover:bg-slate-700 transition-colors shrink-0" title="Voltar aos packs">

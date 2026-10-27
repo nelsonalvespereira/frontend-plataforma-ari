@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabaseClient';
+import AceiteTermos, { MSG_ACEITE } from '../components/AceiteTermos';
+import { TERMOS_VERSAO } from '../config/responsavel';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -32,12 +35,18 @@ export default function Login() {
           setLoading(false);
           return;
         }
+        if (!aceitouTermos) {
+          setErrorMsg(MSG_ACEITE);
+          setLoading(false);
+          return;
+        }
 
         const { error } = await signUp({
           email,
           password,
           nome: nomeLimpo,
           turmaSlug: niche,
+          termosVersao: TERMOS_VERSAO,
         });
 
         if (error) throw error;
@@ -204,6 +213,8 @@ export default function Login() {
                 </Link>
               </div>
             )}
+
+            {isRegistering && <AceiteTermos marcado={aceitouTermos} onChange={setAceitouTermos} />}
 
             <button
               type="submit"

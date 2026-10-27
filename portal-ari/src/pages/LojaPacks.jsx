@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Package, Timer, CheckCircle2, Loader2, LogOut, PlayCircle, Plus, ShoppingBag } from 'lucide-react';
 import Sidebar from './Sidebar';
+import AvisoInstalarApp from '../components/AvisoInstalarApp';
 import logo from '../assets/logo-ari.jpeg';
 import { useAuth } from '../hooks/useAuth';
 import { useLojaPacks } from '../hooks/usePack';
@@ -38,7 +39,7 @@ function Moldura({ comMenu, children, signOut }) {
       <header className="bg-slate-950 text-white">
         <div className="max-w-6xl mx-auto px-5 md:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <img src={logo} alt="Aritmática Gabaritando" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+            <img src={logo} alt="Arimática Gabaritando" className="w-9 h-9 rounded-lg object-cover shrink-0" />
             <span className="font-black tracking-tight truncate">Packs Avulsos</span>
           </div>
           <div className="flex items-center gap-2">
@@ -146,6 +147,7 @@ export default function LojaPacks() {
 
   return (
     <Moldura comMenu={temAcesso} signOut={signOut}>
+      <AvisoInstalarApp />
       <div className="max-w-6xl mx-auto space-y-8">
         {erro && (
           <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-xl text-sm font-medium">

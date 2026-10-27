@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, ListOrdered, Target, PlayCircle, Radio, TrendingUp,
   Trophy, LogOut, Calendar, AlertCircle, Bookmark, ShoppingBag,
+  ShieldCheck,
 } from 'lucide-react';
 import BarraNavMobile from '../components/BarraNavMobile';
 import { useAuth } from '../hooks/useAuth';
@@ -52,6 +53,7 @@ export default function Sidebar({ ocultarNoComputador = false }) {
     { to: '/lives', label: 'Lives', icon: Radio },
     ...(isEnem ? [{ to: '/assuntos-enem', label: 'Assuntos do ENEM', icon: ListOrdered }] : []),
     ...NAV_ITEMS_SECONDARY,
+    { to: '/termos', label: 'Termos e privacidade', icon: ShieldCheck },
   ];
 
   return (
@@ -61,11 +63,11 @@ export default function Sidebar({ ocultarNoComputador = false }) {
       <div className="h-16 flex items-center gap-2.5 px-6 border-b border-slate-800/60">
         <img
           src={logoAri}
-          alt="Aritmática Gabaritando"
+          alt="Arimática Gabaritando"
           className="w-8 h-8 rounded-lg object-cover shrink-0"
         />
         <span className="text-sm font-black text-white tracking-wide leading-tight">
-          ARITMÁTICA <span className="text-brand-orange">GABARITANDO</span>
+          Arimática <span className="text-brand-orange">GABARITANDO</span>
         </span>
       </div>
 

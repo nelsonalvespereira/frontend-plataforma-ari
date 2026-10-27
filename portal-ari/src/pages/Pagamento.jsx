@@ -110,7 +110,11 @@ export default function Pagamento() {
     jaAbriuDaUrl.current = true;
     const plano = planos.find((p) => p.price_id === planoDaUrl);
     if (plano) handleEscolherPlano(plano);
-    else setErro('Este pack não está mais disponível.');
+    else {
+      // Normalmente: a loja estava aberta desde antes de o pack ser alterado (ID antigo na tela).
+      console.warn('Plano da URL não encontrado entre os planos ativos:', planoDaUrl, planos.map((p) => p.price_id));
+      setErro('Este pack não foi encontrado (pode ter sido alterado). Volte para a loja de packs e atualize a página.');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planoDaUrl, planos, loadingPlanos, loadingAuth]);
 
@@ -167,9 +171,10 @@ export default function Pagamento() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans flex flex-col items-center justify-center p-6 md:p-12 text-white">
-      {/* Barra da conta: deixa claro com quem o aluno está logado e permite trocar */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between gap-3 px-5 md:px-8 py-4 text-sm">
+    <div className="min-h-screen bg-slate-950 font-sans flex flex-col items-center p-4 pt-3 md:p-12 md:pt-6 text-white">
+      {/* Barra da conta: deixa claro com quem o aluno está logado e permite trocar.
+          Fica no fluxo da página (não por cima), para não encobrir o título no celular. */}
+      <div className="w-full max-w-6xl flex items-center justify-between gap-3 mb-8 md:mb-12 text-sm">
         <Link to="/" className="flex items-center gap-1.5 text-slate-400 hover:text-white font-semibold">
           <ArrowLeft className="w-4 h-4" /> Início
         </Link>
@@ -177,13 +182,14 @@ export default function Pagamento() {
           user ? (
             <div className="flex items-center gap-3 min-w-0">
               <span className="text-slate-400 truncate">
-                Conectado como <strong className="text-slate-200">{profile?.nome || user.email}</strong>
+                <span className="hidden sm:inline">Conectado como </span>
+                <strong className="text-slate-200">{profile?.nome || user.email}</strong>
               </span>
               <button
                 onClick={trocarDeConta}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-700 hover:bg-white/5 text-slate-200 font-bold rounded-lg cursor-pointer shrink-0"
               >
-                <LogOut className="w-4 h-4" /> Sair / trocar de conta
+                <LogOut className="w-4 h-4" /> Sair<span className="hidden sm:inline"> / trocar de conta</span>
               </button>
             </div>
           ) : (
@@ -197,11 +203,11 @@ export default function Pagamento() {
         )}
       </div>
 
-      <div ref={topoRef} className="max-w-4xl w-full text-center space-y-4 mb-12">
+      <div ref={topoRef} className="max-w-4xl w-full text-center space-y-3 md:space-y-4 mb-8 md:mb-12">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 text-brand-orange border border-orange-500/20 text-xs font-bold uppercase tracking-wider">
           <Zap className="w-3.5 h-3.5" /> {escolhendoPack ? 'Pack Avulso · Pagamento Único' : 'Assinatura Mensal Recorrente'}
         </div>
-        <h1 className="text-3xl md:text-5xl font-black">
+        <h1 className="text-2xl md:text-5xl font-black">
           {planoSelecionado
             ? (escolhendoPack ? 'Finalize sua compra' : 'Finalize sua assinatura')
             : 'Escolha sua modalidade'}
@@ -272,7 +278,7 @@ export default function Pagamento() {
           {assinaturas.map((plano) => (
             <div
               key={plano.price_id}
-              className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-3xl p-7 flex flex-col justify-between transition-all shadow-xl"
+              className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-3xl p-5 md:p-7 flex flex-col justify-between transition-all shadow-xl"
             >
               <div className="space-y-4">
                 <h3 className="text-lg font-black text-white">{plano.nome}</h3>
@@ -301,6 +307,15 @@ export default function Pagamento() {
         </div>
       )}
 
+      {!planoSelecionado && !loadingPlanos && !loadingAuth && (
+        <p className="mt-6 text-center text-xs text-slate-500 max-w-md">
+          Ao assinar ou comprar, você concorda com os{' '}
+          <Link to="/termos" target="_blank" rel="noopener" className="text-slate-300 underline hover:text-white">Termos de uso</Link> e a{' '}
+          <Link to="/privacidade" target="_blank" rel="noopener" className="text-slate-300 underline hover:text-white">Política de privacidade</Link>.
+          Você pode desistir em até 7 dias com reembolso integral.
+        </p>
+      )}
+
       {!planoSelecionado && !loadingPlanos && !loadingAuth && packs.length > 0 && (
         <div className="max-w-6xl w-full mt-14">
           <div className="text-center mb-6 space-y-1">
@@ -311,7 +326,7 @@ export default function Pagamento() {
             {packs.map((pack) => (
               <div
                 key={pack.price_id}
-                className="bg-slate-900 border border-brand-orange/30 hover:border-brand-orange/60 rounded-3xl p-7 flex flex-col justify-between transition-all shadow-xl"
+                className="bg-slate-900 border border-brand-orange/30 hover:border-brand-orange/60 rounded-3xl p-5 md:p-7 flex flex-col justify-between transition-all shadow-xl"
               >
                 <div className="space-y-4">
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 text-brand-orange text-[11px] font-bold uppercase tracking-wider">

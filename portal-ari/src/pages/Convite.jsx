@@ -4,6 +4,8 @@ import { Loader2, Mail, Lock, User, Gift, GraduationCap, AlertCircle } from 'luc
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 import logo from '../assets/logo-ari.jpeg';
+import AceiteTermos, { MSG_ACEITE } from '../components/AceiteTermos';
+import { TERMOS_VERSAO } from '../config/responsavel';
 
 // /convite/:id — página do link que o admin gera em Gestão de Alunos → Convidar Aluno.
 // O banco confere tudo (ver_convite / aceitar_convite): o convite vale uma vez,
@@ -28,6 +30,7 @@ export default function Convite() {
   const [modo, setModo] = useState('cadastro'); // 'cadastro' | 'login'
   const [nome, setNome] = useState('');
   const [senha, setSenha] = useState('');
+  const [aceitouTermos, setAceitouTermos] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
@@ -64,7 +67,8 @@ export default function Convite() {
       if (modo === 'cadastro') {
         const nomeLimpo = nome.trim().replace(/\s+/g, ' ');
         if (nomeLimpo.length < 2) throw new Error('Informe seu nome.');
-        const { data, error } = await signUp({ email: convite.email, password: senha, nome: nomeLimpo, turmaSlug: convite.turma_slug });
+        if (!aceitouTermos) throw new Error(MSG_ACEITE);
+        const { data, error } = await signUp({ email: convite.email, password: senha, nome: nomeLimpo, turmaSlug: convite.turma_slug, termosVersao: TERMOS_VERSAO });
         if (error) {
           if (/already registered/i.test(error.message)) {
             setModo('login');
@@ -96,7 +100,7 @@ export default function Convite() {
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <img src={logo} alt="" className="w-10 h-10 rounded-xl object-cover" />
           <span className="font-black tracking-wide">
-            ARIMÁTICA <span className="text-brand-orange">GABARITANDO</span>
+            Arimática <span className="text-brand-orange">GABARITANDO</span>
           </span>
         </div>
 
@@ -156,6 +160,8 @@ export default function Convite() {
                     required
                   />
                 </div>
+
+                {modo === 'cadastro' && <AceiteTermos marcado={aceitouTermos} onChange={setAceitouTermos} escuro />}
 
                 {erro && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">{erro}</p>}
                 {aviso && <p className="text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">{aviso}</p>}

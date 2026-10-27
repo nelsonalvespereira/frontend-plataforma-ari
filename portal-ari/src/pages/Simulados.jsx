@@ -10,7 +10,9 @@ import {
   useSimulados, buscarQuestoesDoSimulado, criarSimuladoAluno,
   iniciarTentativa, finalizarTentativa,
 } from '../hooks/useSimulados';
-import { buscarQuestoesParaSimulado, responderQuestaoAvulsa } from '../hooks/useQuestoes';import RenderBlocos from '../components/RenderBlocos';
+import { buscarQuestoesParaSimulado, aplicarGabarito } from '../hooks/useQuestoes';
+import RenderBlocos from '../components/RenderBlocos';
+import ResolucaoProfessor from '../components/ResolucaoProfessor';
 import { supabase } from '../lib/supabaseClient';
 
 export default function Simulados() {
@@ -202,26 +204,21 @@ export default function Simulados() {
     setRespostas((prev) => ({ ...prev, [id]: letra }));
   };
 
+  // A correção acontece NO BANCO (o gabarito não fica no navegador durante a prova).
+  // Ele devolve o placar e o gabarito, que é juntado às questões para a tela de revisão.
   const handleFinalizar = async () => {
+    if (finalizando) return;
     setFinalizando(true);
 
-    let acertos = 0, erros = 0;
-    const registros = [];
-
-    for (const q of questoesProva) {
-      const escolhida = respostas[q.id];
-      if (!escolhida) continue;
-      const correta = escolhida === q.resposta_correta;
-      if (correta) acertos++; else erros++;
-      registros.push(responderQuestaoAvulsa(q.id, escolhida, q.resposta_correta));
+    const { resultado: r, error } = await finalizarTentativa(tentativaId, respostas);
+    if (error || !r) {
+      setFinalizando(false);
+      alert('Não foi possível corrigir o simulado. Verifique sua conexão e tente finalizar de novo.');
+      return;
     }
 
-    await Promise.all(registros);
-
-    const emBranco = questoesProva.length - acertos - erros;
-    await finalizarTentativa(tentativaId, respostas, { acertos, erros, emBranco });
-
-    setResultado({ acertos, erros, emBranco });
+    setQuestoesProva((qs) => aplicarGabarito(qs, r.gabarito));
+    setResultado({ acertos: r.acertos, erros: r.erros, emBranco: r.em_branco });
     setFinalizando(false);
   };
 
@@ -439,15 +436,14 @@ export default function Simulados() {
                       </div>
 
                       {/* COMENTÁRIO DO PROFESSOR */}
-                      {resultado && gabaritoReveladoNaQuestao && questao.comentario && (
+                      {resultado && gabaritoReveladoNaQuestao && (
                         <div className="mt-6 p-5 bg-orange-50/70 border border-orange-200 rounded-2xl animate-fade-in">
-                          <div className="flex items-center gap-2 mb-2">
-                            <MessageSquare className="w-4 h-4 text-brand-orange" />
-                            <h4 className="font-black text-slate-800 text-sm">Resolução Comentada do Professor</h4>
-                          </div>
-                          <p className="text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
-                            {questao.comentario}
-                          </p>
+                          <ResolucaoProfessor
+                            key={questao.id}
+                            titulo="Resolução Comentada do Professor"
+                            comentario={questao.comentario}
+                            videoUrl={questao.video_resolucao_url || questao.resolucao_video_url}
+                          />
                         </div>
                       )}
                     </div>
