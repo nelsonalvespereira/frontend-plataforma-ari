@@ -174,17 +174,28 @@ export default function AdminAlunos() {
 
   // 2. Excluir Aluno
   const handleExcluirAluno = async (id, nome) => {
-    if (!window.confirm(`Tem certeza que deseja excluir o aluno "${nome}"?`)) return;
+    if (!window.confirm(
+      `Tem certeza que deseja excluir o aluno "${nome}"?\n\n` +
+      'Se ele tiver assinatura, ela será cancelada no Stripe agora (sem reembolso automático).'
+    )) return;
 
     try {
-      // Apaga a CONTA (auth.users); o profile some junto por cascade. Só a Edge Function consegue isso.
+      // A Edge Function cancela a assinatura no Stripe e só então apaga a conta (auth.users).
       const { data, error } = await supabase.functions.invoke('admin-gerenciar-aluno', {
         body: { action: 'delete_user', userId: id },
       });
 
-      if (error || data?.error) throw new Error(data?.error || error.message);
+      if (error || data?.error) {
+        // Em erro, o motivo real vem no corpo da resposta da função.
+        const corpo = await error?.context?.json?.().catch(() => null);
+        throw new Error(data?.error || corpo?.error || error.message);
+      }
 
-      alert('Aluno excluído com sucesso!');
+      alert(
+        data?.assinaturasCanceladas
+          ? 'Aluno excluído e assinatura cancelada no Stripe.'
+          : 'Aluno excluído com sucesso!'
+      );
       carregarDados();
     } catch (err) {
       console.error('Erro detalhado ao excluir aluno:', err);
@@ -835,7 +846,7 @@ export default function AdminAlunos() {
 
                 <a
                   href={`https://wa.me/?text=${encodeURIComponent(
-                    `Olá, ${inviteForm.nome.split(' ')[0]}! Aqui está seu convite para a plataforma Aritmática Gabaritando: ${inviteLink}`
+                    `Olá, ${inviteForm.nome.split(' ')[0]}! Aqui está seu convite para a plataforma Arimática Gabaritando: ${inviteLink}`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
