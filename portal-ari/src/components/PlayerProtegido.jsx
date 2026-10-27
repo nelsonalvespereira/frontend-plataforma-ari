@@ -330,10 +330,8 @@ const PlayerProtegido = forwardRef(function PlayerProtegido({ url, titulo, inici
         </div>
       )}
 
-      {/* Pausado no meio: faixa sólida no topo cobre o título e o canal que o YouTube volta a mostrar */}
-      {jaComecou && !tocando && !terminou && (
-        <div className="absolute inset-x-0 top-0 h-[16%] min-h-[44px] z-[11] pointer-events-none bg-black" />
-      )}
+      {/* Pausado no meio: o YouTube volta a mostrar título/canal no topo. Não cobrimos com faixa
+          sólida (cortava a parte de cima da aula); o degradê abaixo escurece e nada ali é clicável. */}
       <div className={`absolute inset-x-0 top-0 h-16 z-[11] pointer-events-none bg-gradient-to-b from-black/80 to-transparent transition-opacity ${tocando && !mostrarBarra ? 'opacity-0' : 'opacity-100'}`} />
 
       {/* Marca d'água com o aluno */}
