@@ -129,3 +129,13 @@ export async function buscarQuestoesParaSimulado({ assunto, dificuldade, quantid
   const embaralhado = [...(data ?? [])].sort(() => Math.random() - 0.5);
   return { questaoIds: embaralhado.slice(0, quantidade).map((q) => q.id), error: null };
 }
+
+// Junta o gabarito devolvido pelo banco às questões da tela.
+// Aceita { "<id>": {...} } ou uma lista [{ questao_id, ... }].
+export function aplicarGabarito(questoes, gabarito) {
+  if (!gabarito) return questoes;
+  const porId = Array.isArray(gabarito)
+    ? Object.fromEntries(gabarito.map((g) => [g.questao_id ?? g.id, g]))
+    : gabarito;
+  return questoes.map((q) => (porId[q.id] ? { ...q, ...porId[q.id], id: q.id } : q));
+}

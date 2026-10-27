@@ -73,12 +73,17 @@ export function AuthProvider({ children }) {
   }, [carregarAssinaturas]);
 
   // turmaSlug: o `nicheId` escolhido na landing page (ex: 'enem', 'concursos'...)
-  async function signUp({ email, password, nome, turmaSlug }) {
+  // termosVersao: versão dos Termos/Privacidade aceita no cadastro (fica gravada na conta).
+  async function signUp({ email, password, nome, turmaSlug, termosVersao }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { nome, turma_slug: turmaSlug },
+        data: {
+          nome,
+          turma_slug: turmaSlug,
+          ...(termosVersao && { termos_versao: termosVersao, termos_aceitos_em: new Date().toISOString() }),
+        },
       },
     });
     return { data, error };
