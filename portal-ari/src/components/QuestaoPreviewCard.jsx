@@ -1,6 +1,7 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
 import RenderBlocos from './RenderBlocos';
+import ResolucaoProfessor from './ResolucaoProfessor';
 
 const DIFICULDADE_STYLE = {
   facil: 'bg-emerald-50 text-emerald-700',
@@ -24,6 +25,7 @@ export default function QuestaoPreviewCard({
   alternativas = [],
   respostaCorreta,
   comentario,
+  resolucaoVideoUrl,
 }) {
   const temBlocos = blocosEnunciado && blocosEnunciado.length > 0;
 
@@ -81,13 +83,9 @@ export default function QuestaoPreviewCard({
         </div>
       </div>
 
-      {comentario && (
+      {(comentario?.trim() || resolucaoVideoUrl) && (
         <div className="px-5 py-4 bg-orange-50/60 border-t border-orange-100">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 bg-brand-orange rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0">P</div>
-            <h4 className="font-black text-slate-800 text-sm">Resolução do Professor</h4>
-          </div>
-          <p className="text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{comentario}</p>
+          <ResolucaoProfessor comentario={comentario} videoUrl={resolucaoVideoUrl} />
         </div>
       )}
     </div>
