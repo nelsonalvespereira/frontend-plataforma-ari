@@ -6,6 +6,7 @@ import { useAdminQuestoes, useAdminSimulados, useTurmas } from '../hooks/useAdmi
 import { buscarQuestoesDoSimulado } from '../hooks/useSimulados';
 import QuestaoPreviewCard from '../components/QuestaoPreviewCard';
 
+import { useAvisos } from '../components/Avisos';
 const DIFICULDADE_STYLE = {
   facil: 'bg-emerald-50 text-emerald-700',
   medio: 'bg-amber-50 text-amber-700',
@@ -15,6 +16,7 @@ const DIFICULDADE_STYLE = {
 const DIFICULDADE_LABEL = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' };
 
 export default function AdminSimuladosQuestoes() {
+  const avisos = useAvisos();
   const navigate = useNavigate();
   const [aba, setAba] = useState('questoes');
   const [busca, setBusca] = useState('');
@@ -30,13 +32,13 @@ export default function AdminSimuladosQuestoes() {
   const { simulados, loading: loadingS, excluirSimulado } = useAdminSimulados({ busca, turmaId: turmaFiltro || undefined });
 
   const handleExcluirQuestao = async (id) => {
-    if (!confirm('Excluir essa questão? Essa ação não pode ser desfeita.')) return;
+    if (!(await avisos.confirmar({ titulo: 'Excluir essa questão?', mensagem: 'Essa ação não pode ser desfeita.', confirmarTexto: 'Excluir', perigo: true }))) return;
     await excluirQuestao(id);
     setMenuAberto(null);
   };
 
   const handleExcluirSimulado = async (id) => {
-    if (!confirm('Excluir esse simulado? Essa ação não pode ser desfeita.')) return;
+    if (!(await avisos.confirmar({ titulo: 'Excluir esse simulado?', mensagem: 'Essa ação não pode ser desfeita.', confirmarTexto: 'Excluir', perigo: true }))) return;
     await excluirSimulado(id);
     setMenuAberto(null);
   };

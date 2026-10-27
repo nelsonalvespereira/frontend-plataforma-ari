@@ -6,9 +6,11 @@ import BlocoEditor from '../components/BlocoEditor';
 import RenderBlocos from '../components/RenderBlocos';
 import { criarBloco, processarBlocos, blocosParaTexto } from '../lib/blocos';
 
+import { useAvisos } from '../components/Avisos';
 const LETRAS = ['A', 'B', 'C', 'D', 'E'];
 
 export default function AdminNovaQuestao() {
+  const avisos = useAvisos();
   const [turmas, setTurmas] = useState([]);
   const [assuntosArvore, setAssuntosArvore] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -95,8 +97,8 @@ export default function AdminNovaQuestao() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!assuntoId) return alert('Selecione um assunto da árvore hierárquica.');
-    if (!materia.trim()) return alert('Preencha o campo Matéria.');
+    if (!assuntoId) return avisos.erro('Selecione um assunto da árvore hierárquica.');
+    if (!materia.trim()) return avisos.erro('Preencha o campo Matéria.');
 
     setLoading(true);
     setSucesso(false);
@@ -178,7 +180,7 @@ export default function AdminNovaQuestao() {
 
     } catch (error) {
       console.error('Erro detalhado ao salvar questão:', error);
-      alert('Erro ao salvar a questão: ' + (error.message || 'Erro desconhecido.'));
+      avisos.erro('Erro ao salvar a questão: ' + (error.message || 'Erro desconhecido.'));
     } finally {
       setLoading(false);
     }

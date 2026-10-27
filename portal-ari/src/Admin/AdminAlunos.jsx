@@ -22,6 +22,7 @@ import {
 import AdminSidebar from './AdminSidebar';
 import { supabase } from '../lib/supabaseClient';
 
+import { useAvisos } from '../components/Avisos';
 const STATUS_STYLE = {
   Ativo: 'bg-emerald-50 text-emerald-700',
   Pendente: 'bg-amber-50 text-amber-700',
@@ -42,6 +43,7 @@ function iniciais(nome) {
 }
 
 export default function AdminAlunos() {
+  const avisos = useAvisos();
   const [alunos, setAlunos] = useState([]);
   const [turmas, setTurmas] = useState(['Todas']);
   const [turmasObjs, setTurmasObjs] = useState([]);
@@ -174,10 +176,12 @@ export default function AdminAlunos() {
 
   // 2. Excluir Aluno
   const handleExcluirAluno = async (id, nome) => {
-    if (!window.confirm(
-      `Tem certeza que deseja excluir o aluno "${nome}"?\n\n` +
-      'Se ele tiver assinatura, ela será cancelada no Stripe agora (sem reembolso automático).'
-    )) return;
+    if (!(await avisos.confirmar({
+      titulo: `Excluir o aluno "${nome}"?`,
+      mensagem: 'Se ele tiver assinatura, ela será cancelada no Stripe agora (sem reembolso automático). Essa ação não pode ser desfeita.',
+      confirmarTexto: 'Excluir aluno',
+      perigo: true,
+    }))) return;
 
     try {
       // A Edge Function cancela a assinatura no Stripe e só então apaga a conta (auth.users).
@@ -191,7 +195,7 @@ export default function AdminAlunos() {
         throw new Error(data?.error || corpo?.error || error.message);
       }
 
-      alert(
+      avisos.sucesso(
         data?.assinaturasCanceladas
           ? 'Aluno excluído e assinatura cancelada no Stripe.'
           : 'Aluno excluído com sucesso!'
@@ -199,7 +203,7 @@ export default function AdminAlunos() {
       carregarDados();
     } catch (err) {
       console.error('Erro detalhado ao excluir aluno:', err);
-      alert('Erro ao excluir o aluno: ' + (err.message || 'tente novamente.'));
+      avisos.erro('Erro ao excluir o aluno: ' + (err.message || 'tente novamente.'));
     } finally {
       setMenuAbertoId(null);
     }
@@ -230,12 +234,12 @@ export default function AdminAlunos() {
 
       if (error) throw error;
 
-      alert('Dados do aluno atualizados com sucesso!');
+      avisos.sucesso('Dados do aluno atualizados com sucesso!');
       setModalEditOpen(false);
       carregarDados();
     } catch (err) {
       console.error('Erro detalhado ao atualizar aluno:', err);
-      alert('Erro ao atualizar dados.');
+      avisos.erro('Erro ao atualizar dados.');
     } finally {
       setSubmittingEdit(false);
     }
@@ -248,10 +252,10 @@ export default function AdminAlunos() {
     const msg = dar
       ? `Dar acesso de cortesia (sem cobrança) para "${aluno.nome}"?`
       : `Remover a cortesia de "${aluno.nome}"? Ele perde o acesso se não tiver assinatura.`;
-    if (!window.confirm(msg)) return;
+    if (!(await avisos.confirmar({ titulo: dar ? 'Dar cortesia?' : 'Remover cortesia?', mensagem: msg, confirmarTexto: dar ? 'Dar cortesia' : 'Remover', perigo: !dar }))) return;
 
     const { error } = await supabase.from('profiles').update({ acesso_livre: dar }).eq('id', aluno.id);
-    if (error) return alert('Erro ao alterar cortesia: ' + error.message);
+    if (error) return avisos.erro('Erro ao alterar cortesia: ' + error.message);
     carregarDados();
   };
 
@@ -268,10 +272,10 @@ export default function AdminAlunos() {
     e.preventDefault();
     const dias = Number(diasPack);
     if (!alunoPackAlvo || !Number.isInteger(dias) || dias < 1 || dias > 365) {
-      return alert('Informe um número de dias entre 1 e 365.');
+      return avisos.erro('Informe um número de dias entre 1 e 365.');
     }
 
-    if (!packEscolhido) return alert('Escolha qual pack liberar.');
+    if (!packEscolhido) return avisos.erro('Escolha qual pack liberar.');
 
     // Registra como compra de cortesia (valor 0): é a compra que libera o conteúdo do pack.
     setSubmittingPack(true);
@@ -282,19 +286,19 @@ export default function AdminAlunos() {
     });
     setSubmittingPack(false);
 
-    if (error) return alert('Erro ao liberar o Pack: ' + error.message);
+    if (error) return avisos.erro('Erro ao liberar o Pack: ' + error.message);
     setAlunoPackAlvo(null);
     carregarDados();
   };
 
   const handleRevogarPack = async (aluno) => {
     setMenuAbertoId(null);
-    if (!window.confirm(`Encerrar agora o Pack de "${aluno.nome}"?`)) return;
+    if (!(await avisos.confirmar({ titulo: `Encerrar o Pack de "${aluno.nome}"?`, mensagem: 'O acesso aos packs dele termina agora.', confirmarTexto: 'Encerrar', perigo: true }))) return;
     const { error } = await supabase
       .from('profiles')
       .update({ tipo_acesso: 'pack_expirado', data_expiracao_pack: new Date().toISOString() })
       .eq('id', aluno.id);
-    if (error) return alert('Erro ao encerrar o Pack: ' + error.message);
+    if (error) return avisos.erro('Erro ao encerrar o Pack: ' + error.message);
     carregarDados();
   };
 
@@ -310,11 +314,11 @@ export default function AdminAlunos() {
   const handleSalvarSenha = async (e) => {
     e.preventDefault();
     if (!alunoSenhaAlvo || !novaSenha.trim()) {
-      return alert('Digite a nova senha.');
+      return avisos.erro('Digite a nova senha.');
     }
 
     if (novaSenha.length < 6) {
-      return alert('A senha precisa ter pelo menos 6 caracteres.');
+      return avisos.erro('A senha precisa ter pelo menos 6 caracteres.');
     }
 
     setSubmittingSenha(true);
@@ -325,13 +329,13 @@ export default function AdminAlunos() {
 
       if (error || data?.error) throw new Error(data?.error || error.message);
 
-      alert(`Senha de ${alunoSenhaAlvo.nome} alterada com sucesso!`);
+      avisos.sucesso(`Senha de ${alunoSenhaAlvo.nome} alterada com sucesso!`);
       setModalSenhaOpen(false);
       setAlunoSenhaAlvo(null);
       setNovaSenha('');
     } catch (err) {
       console.error('Erro ao alterar senha:', err);
-      alert('Erro ao alterar senha: ' + (err.message || 'Erro desconhecido'));
+      avisos.erro('Erro ao alterar senha: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setSubmittingSenha(false);
     }

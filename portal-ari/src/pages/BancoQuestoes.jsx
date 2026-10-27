@@ -10,9 +10,11 @@ import ResolucaoProfessor from '../components/ResolucaoProfessor';
 import { useQuestoes } from '../hooks/useQuestoes';
 import { supabase } from '../lib/supabaseClient';
 
+import { useAvisos } from '../components/Avisos';
 const ROTULO_DIFICULDADE = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' };
 
 export default function BancoQuestoes() {
+  const avisos = useAvisos();
   const [respostaSelecionada, setRespostaSelecionada] = useState(null);
   const [respondida, setRespondida] = useState(false);
   const [gabaritoRevelado, setGabaritoRevelado] = useState(false);
@@ -102,7 +104,7 @@ export default function BancoQuestoes() {
     const { resultado: gabarito, error } = await responder(questaoAtual.id, respostaSelecionada);
     setEnviando(false);
     if (error) {
-      alert('Não foi possível registrar sua resposta. Tente de novo.');
+      avisos.erro('Não foi possível registrar sua resposta. Tente de novo.');
       return;
     }
     const id = questaoAtual.id;

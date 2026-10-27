@@ -10,6 +10,7 @@ import AvisoInstalarApp from '../components/AvisoInstalarApp';
 import { usePackDetalhe, usePackItens, useRestante } from '../hooks/usePack';
 import { abrirMaterialPrivado, formatarRestante, formatarUrlEmbed, linkSeguro, rotuloDuracao, statusDaLive } from '../lib/packUtils';
 
+import { useAvisos } from '../components/Avisos';
 const formatarPreco = (centavos) =>
   ((centavos ?? 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -55,6 +56,7 @@ function Player({ item }) {
 
 // PDF privado (link temporário gerado no clique) ou, nos itens antigos, link externo.
 function BotaoMaterial({ item, children, className }) {
+  const avisos = useAvisos();
   const [abrindo, setAbrindo] = useState(false);
 
   if (item.arquivo_path) {
@@ -63,7 +65,7 @@ function BotaoMaterial({ item, children, className }) {
       try {
         await abrirMaterialPrivado(item.arquivo_path);
       } catch (e) {
-        alert(`${e.message} Se o seu acesso acabou de vencer, atualize a página.`);
+        avisos.erro(`${e.message} Se o seu acesso acabou de vencer, atualize a página.`);
       } finally {
         setAbrindo(false);
       }

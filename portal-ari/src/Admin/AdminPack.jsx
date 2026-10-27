@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import { supabase } from '../lib/supabaseClient';
 
+import { useAvisos } from '../components/Avisos';
 const TIPOS = {
   aulao: { label: 'Aulão', icon: PlayCircle },
   questoes: { label: 'Questões', icon: FileText },
@@ -51,6 +52,7 @@ const campo = 'w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm
 const rotulo = 'block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1';
 
 export default function AdminPack() {
+  const avisos = useAvisos();
   const [aba, setAba] = useState('packs');
   const [itens, setItens] = useState([]);
   const [packs, setPacks] = useState([]);
@@ -142,12 +144,12 @@ export default function AdminPack() {
     e.preventDefault();
     const priceId = formPack.price_id.trim();
     if (!editandoPack && !priceId.startsWith('price_')) {
-      alert('Cole o Price ID do Stripe (começa com "price_"). Ele precisa ser de PAGAMENTO ÚNICO.');
+      avisos.erro('Cole o Price ID do Stripe (começa com "price_"). Ele precisa ser de PAGAMENTO ÚNICO.');
       return;
     }
     const dias = Number(formPack.duracao_dias);
     if (!Number.isInteger(dias) || dias < 1 || dias > 365) {
-      alert('Duração deve ser de 1 a 365 dias.');
+      avisos.erro('Duração deve ser de 1 a 365 dias.');
       return;
     }
 
@@ -167,7 +169,7 @@ export default function AdminPack() {
       : await supabase.from('planos').insert({ ...payload, price_id: priceId });
     setSalvando(false);
     if (error) {
-      alert('Erro ao salvar o pack: ' + error.message);
+      avisos.erro('Erro ao salvar o pack: ' + error.message);
       return;
     }
     setModalPack(false);
@@ -176,7 +178,7 @@ export default function AdminPack() {
 
   const alternarPackAtivo = async (p) => {
     const { error } = await supabase.from('planos').update({ ativo: !p.ativo }).eq('price_id', p.price_id);
-    if (error) alert('Erro: ' + error.message);
+    if (error) avisos.erro('Erro: ' + error.message);
     else carregar();
   };
 
@@ -202,7 +204,7 @@ export default function AdminPack() {
     });
     setSalvando(false);
     if (error) {
-      alert('Erro ao ajustar o prazo: ' + error.message);
+      avisos.erro('Erro ao ajustar o prazo: ' + error.message);
       return;
     }
     setAjustando(null);
@@ -210,9 +212,9 @@ export default function AdminPack() {
   };
 
   const encerrarCompra = async (c) => {
-    if (!window.confirm(`Encerrar agora o acesso de ${c.profiles?.nome || 'este aluno'} a este pack?`)) return;
+    if (!(await avisos.confirmar({ titulo: 'Encerrar o acesso?', mensagem: `${c.profiles?.nome || 'Este aluno'} perde o acesso a este pack agora.`, confirmarTexto: 'Encerrar', perigo: true }))) return;
     const { error } = await supabase.rpc('admin_encerrar_pack', { p_session_id: c.stripe_session_id });
-    if (error) alert('Erro ao encerrar: ' + error.message);
+    if (error) avisos.erro('Erro ao encerrar: ' + error.message);
     else carregar();
   };
 
@@ -232,10 +234,10 @@ export default function AdminPack() {
     });
     setSalvando(false);
     if (error) {
-      alert('Erro ao liberar: ' + error.message);
+      avisos.erro('Erro ao liberar: ' + error.message);
       return;
     }
-    alert(`Pack liberado até ${new Date(data).toLocaleString('pt-BR')}.`);
+    avisos.sucesso(`Pack liberado até ${new Date(data).toLocaleString('pt-BR')}.`);
     setLiberando(null);
     carregar();
   };
@@ -263,11 +265,11 @@ export default function AdminPack() {
     e.preventDefault();
     if (!form.titulo.trim()) return;
     if (!form.pack_price_id) {
-      alert('Escolha a qual pack este item pertence.');
+      avisos.erro('Escolha a qual pack este item pertence.');
       return;
     }
     if (form.tipo === 'live' && !form.data_hora) {
-      alert('Informe a data e hora da live.');
+      avisos.erro('Informe a data e hora da live.');
       return;
     }
 
@@ -285,7 +287,7 @@ export default function AdminPack() {
         .upload(caminho, arquivoNovo, { contentType: 'application/pdf', upsert: false });
       if (erroUpload) {
         setSalvando(false);
-        alert('Erro ao enviar o PDF: ' + erroUpload.message);
+        avisos.erro('Erro ao enviar o PDF: ' + erroUpload.message);
         return;
       }
       // Troca de arquivo: apaga o antigo para não acumular.
@@ -313,7 +315,7 @@ export default function AdminPack() {
 
     setSalvando(false);
     if (error) {
-      alert('Erro ao salvar: ' + error.message);
+      avisos.erro('Erro ao salvar: ' + error.message);
       return;
     }
     setArquivoNovo(null);
@@ -323,15 +325,15 @@ export default function AdminPack() {
 
   const alternarAtivo = async (item) => {
     const { error } = await supabase.from('pack_itens').update({ ativo: !item.ativo }).eq('id', item.id);
-    if (error) alert('Erro: ' + error.message);
+    if (error) avisos.erro('Erro: ' + error.message);
     else carregar();
   };
 
   const excluir = async (item) => {
-    if (!window.confirm(`Excluir "${item.titulo}"?`)) return;
+    if (!(await avisos.confirmar({ titulo: `Excluir "${item.titulo}"?`, confirmarTexto: 'Excluir', perigo: true }))) return;
     const { error } = await supabase.from('pack_itens').delete().eq('id', item.id);
     if (error) {
-      alert('Erro ao excluir: ' + error.message);
+      avisos.erro('Erro ao excluir: ' + error.message);
       return;
     }
     if (item.arquivo_path) await supabase.storage.from(BUCKET_MATERIAIS).remove([item.arquivo_path]);
@@ -824,8 +826,8 @@ export default function AdminPack() {
                         const f = e.target.files?.[0];
                         e.target.value = '';
                         if (!f) return;
-                        if (f.type !== 'application/pdf') return alert('Envie um arquivo PDF.');
-                        if (f.size > 50 * 1024 * 1024) return alert('O PDF pode ter no máximo 50 MB.');
+                        if (f.type !== 'application/pdf') return avisos.erro('Envie um arquivo PDF.');
+                        if (f.size > 50 * 1024 * 1024) return avisos.erro('O PDF pode ter no máximo 50 MB.');
                         setArquivoNovo(f);
                       }}
                     />

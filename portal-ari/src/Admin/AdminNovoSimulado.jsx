@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Save, ClipboardList, ArrowLeft, Loader2, CheckCircle2, Search, GripVertical, X } from 'lucide-react';
 
+import { useAvisos } from '../components/Avisos';
 const DIFICULDADE_STYLE = {
   facil: 'bg-emerald-50 text-emerald-700',
   medio: 'bg-amber-50 text-amber-700',
@@ -11,6 +12,7 @@ const DIFICULDADE_STYLE = {
 const DIFICULDADE_LABEL = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' };
 
 export default function AdminNovoSimulado() {
+  const avisos = useAvisos();
   const navigate = useNavigate();
 
   const [turmas, setTurmas] = useState([]);
@@ -71,7 +73,7 @@ export default function AdminNovoSimulado() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (selecionadas.length === 0) {
-      alert('Selecione pelo menos uma questão pro simulado.');
+      avisos.erro('Selecione pelo menos uma questão pro simulado.');
       return;
     }
 
@@ -99,7 +101,7 @@ export default function AdminNovoSimulado() {
 
     } catch (error) {
       console.error('Erro ao salvar simulado:', error.message);
-      alert('Erro ao salvar o simulado. Verifique o console.');
+      avisos.erro('Erro ao salvar o simulado. Verifique o console.');
     } finally {
       setSalvando(false);
     }

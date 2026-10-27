@@ -6,9 +6,11 @@ import BlocoEditor from '../components/BlocoEditor';
 import RenderBlocos from '../components/RenderBlocos';
 import { criarBloco, processarBlocos, blocosParaTexto } from '../lib/blocos';
 
+import { useAvisos } from '../components/Avisos';
 const LETRAS = ['A', 'B', 'C', 'D', 'E'];
 
 export default function AdminEditarQuestao() {
+  const avisos = useAvisos();
   const { id } = useParams(); // Pega o ID da questão na URL
   const navigate = useNavigate();
 
@@ -201,7 +203,7 @@ export default function AdminEditarQuestao() {
 
     } catch (error) {
       console.error('Erro ao atualizar questão:', error.message);
-      alert('Erro ao atualizar a questão: ' + error.message);
+      avisos.erro('Erro ao atualizar a questão: ' + error.message);
     } finally {
       setLoading(false);
     }

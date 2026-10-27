@@ -4,7 +4,9 @@ import { supabase } from '../lib/supabaseClient';
 import { ArrowLeft, Radio, MessageSquare, Send, Loader2, Calendar, ShieldAlert, StopCircle } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 
+import { useAvisos } from '../components/Avisos';
 export default function AdminLiveController() {
+  const avisos = useAvisos();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -81,7 +83,7 @@ export default function AdminLiveController() {
 
   // 👈 Função para encerrar a live manualmente alterando a data/hora para o passado
   const handleEncerrarLiveManual = async () => {
-    if (!window.confirm('Tem certeza que deseja encerrar esta transmissão agora?')) return;
+    if (!(await avisos.confirmar({ titulo: 'Encerrar a transmissão agora?', mensagem: 'A live termina para todos os alunos.', confirmarTexto: 'Encerrar', perigo: true }))) return;
 
     setEncerrando(true);
     try {
@@ -95,12 +97,12 @@ export default function AdminLiveController() {
 
       if (error) throw error;
 
-      alert('Transmissão encerrada com sucesso!');
+      avisos.sucesso('Transmissão encerrada com sucesso!');
       // Atualiza o estado local da live
       setLive((prev) => ({ ...prev, data_hora: dataPassada }));
     } catch (err) {
       console.error('Erro ao encerrar live:', err);
-      alert('Erro ao encerrar a transmissão.');
+      avisos.erro('Erro ao encerrar a transmissão.');
     } finally {
       setEncerrando(false);
     }

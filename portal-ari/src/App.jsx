@@ -48,11 +48,14 @@ import AssuntosEnem from './pages/AssuntosEnem';
 import CadernoErros from './pages/Cadernoerros';
 import Favoritos from './pages/Favoritos';
 import Ranking from './pages/Ranking';
+import NaoEncontrada from './pages/NaoEncontrada';
+import { AvisosProvider } from './components/Avisos';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <AvisosProvider>
         <Routes>
           {/* Rotas públicas */}
           <Route path="/" element={<Home />} />
@@ -106,8 +109,9 @@ function App() {
           <Route path="/admin/cronograma" element={<AdminRoute><AdminCronograma /></AdminRoute>} />
           <Route path="/admin/pack" element={<AdminRoute><AdminPack /></AdminRoute>} />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NaoEncontrada />} />
         </Routes>
+        </AvisosProvider>
       </AuthProvider>
     </BrowserRouter>
   );

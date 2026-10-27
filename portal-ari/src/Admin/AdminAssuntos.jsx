@@ -4,7 +4,9 @@ import { FolderTree, Plus, Trash2, ArrowLeft, Loader2, Folder, FolderOpen, Chevr
 import { Link } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 
+import { useAvisos } from '../components/Avisos';
 export default function AdminAssuntos() {
+  const avisos = useAvisos();
   const [turmas, setTurmas] = useState([]);
   const [turmaId, setTurmaId] = useState('');
   const [assuntos, setAssuntos] = useState([]);
@@ -74,7 +76,7 @@ export default function AdminAssuntos() {
 
     setSalvando(false);
     if (error) {
-      alert('Erro ao salvar assunto: ' + error.message);
+      avisos.erro('Erro ao salvar assunto: ' + error.message);
     } else {
       setNome('');
       setCategoriaPaiId('');
@@ -83,10 +85,10 @@ export default function AdminAssuntos() {
   };
 
   const handleDeletar = async (id, nomeItem) => {
-    if (!window.confirm(`Deseja realmente excluir "${nomeItem}" e todas as suas subcategorias?`)) return;
+    if (!(await avisos.confirmar({ titulo: `Excluir "${nomeItem}"?`, mensagem: 'Todas as subcategorias dele também serão excluídas.', confirmarTexto: 'Excluir', perigo: true }))) return;
     const { error } = await supabase.from('assuntos_hierarquia').delete().eq('id', id);
     if (error) {
-      alert('Erro ao excluir item.');
+      avisos.erro('Erro ao excluir item.');
     } else {
       fetchAssuntos();
     }

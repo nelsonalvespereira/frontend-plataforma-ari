@@ -9,7 +9,9 @@ import { useGamificacao } from '../hooks/useGamificacao';
 import Sidebar from './Sidebar';
 import PlayerProtegido from '../components/PlayerProtegido';
 
+import { useAvisos } from '../components/Avisos';
 export default function PlayerAulas() {
+  const avisos = useAvisos();
   const navigate = useNavigate();
   const [modulos, setModulos] = useState([]);
   const [aulasPorModulo, setAulasPorModulo] = useState({});
@@ -210,7 +212,7 @@ export default function PlayerAulas() {
 
     } catch (error) {
       console.error('Erro ao concluir aula:', error.message);
-      alert('Erro ao concluir aula: ' + error.message);
+      avisos.erro('Não foi possível concluir a aula: ' + error.message);
     } finally {
       setMarcandoConcluida(false);
     }
@@ -242,7 +244,7 @@ export default function PlayerAulas() {
       setMinutoInput('00:00');
     } catch (err) {
       console.error('Erro ao salvar anotação:', err);
-      alert('Erro ao salvar anotação.');
+      avisos.erro('Não foi possível salvar a anotação.');
     }
   };
 

@@ -4,6 +4,7 @@ import { Calendar, ArrowLeft, Plus, Loader2, Save, Trash2, Users, User, Layers, 
 import { Link } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 
+import { useAvisos } from '../components/Avisos';
 const DIAS_SEMANA = [
   { id: 1, nome: 'Segunda-feira' },
   { id: 2, nome: 'Terça-feira' },
@@ -15,6 +16,7 @@ const DIAS_SEMANA = [
 ];
 
 export default function AdminCronograma() {
+  const avisos = useAvisos();
   const [modo, setModo] = useState('turma'); // 'turma' ou 'aluno'
   
   // Listas de dados
@@ -114,10 +116,10 @@ export default function AdminCronograma() {
 
   const handleAdicionar = async (e) => {
     e.preventDefault();
-    if (!titulo.trim()) return alert('Preencha o título da atividade.');
+    if (!titulo.trim()) return avisos.erro('Preencha o título da atividade.');
 
-    if (modo === 'turma' && !turmaAtiva) return alert('Selecione uma turma válida.');
-    if (modo === 'aluno' && !alunoAtivo) return alert('Selecione um aluno válido.');
+    if (modo === 'turma' && !turmaAtiva) return avisos.erro('Selecione uma turma válida.');
+    if (modo === 'aluno' && !alunoAtivo) return avisos.erro('Selecione um aluno válido.');
 
     setSalvando(true);
     try {
@@ -143,7 +145,7 @@ export default function AdminCronograma() {
         carregarCronogramaAluno(alunoAtivo);
       }
     } catch (error) {
-      alert('Erro ao salvar no cronograma: ' + (error.message || 'Erro desconhecido'));
+      avisos.erro('Erro ao salvar no cronograma: ' + (error.message || 'Erro desconhecido'));
       console.error(error);
     } finally {
       setSalvando(false);

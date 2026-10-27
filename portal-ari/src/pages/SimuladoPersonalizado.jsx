@@ -10,7 +10,9 @@ import RenderBlocos from '../components/RenderBlocos';
 import { useGamificacao } from '../hooks/useGamificacao';
 import { responderQuestaoAvulsa } from '../hooks/useQuestoes';
 
+import { useAvisos } from '../components/Avisos';
 export default function SimuladoPersonalizado() {
+  const avisos = useAvisos();
   const navigate = useNavigate();
   const { recarregar } = useGamificacao();
 
@@ -92,7 +94,7 @@ export default function SimuladoPersonalizado() {
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        alert('Nenhuma questão encontrada com esses filtros. Tente selecionar outro assunto ou limpar a dificuldade!');
+        avisos.info('Nenhuma questão encontrada com esses filtros. Tente outro assunto ou limpe a dificuldade.');
         setCarregandoQuiz(false);
         return;
       }
@@ -109,7 +111,7 @@ export default function SimuladoPersonalizado() {
       setEtapa('quiz');
     } catch (err) {
       console.error('Erro ao buscar questões:', err.message);
-      alert('Erro ao iniciar simulado.');
+      avisos.erro('Não foi possível iniciar o simulado.');
     } finally {
       setCarregandoQuiz(false);
     }
@@ -132,7 +134,7 @@ export default function SimuladoPersonalizado() {
     setConfirmando(false);
 
     if (error || !resultado) {
-      alert('Não foi possível confirmar a resposta. Tente novamente.');
+      avisos.erro('Não foi possível confirmar a resposta. Tente novamente.');
       return;
     }
 

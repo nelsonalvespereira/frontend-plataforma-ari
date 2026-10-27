@@ -3,6 +3,7 @@ import { User, GraduationCap, Bell, Lock, Plus, Pencil, Trash2, Loader2, X } fro
 import AdminSidebar from './AdminSidebar';
 import { supabase } from '../lib/supabaseClient';
 
+import { useAvisos } from '../components/Avisos';
 function Toggle({ ativo, onChange }) {
   return (
     <button
@@ -19,6 +20,7 @@ function Toggle({ ativo, onChange }) {
 }
 
 export default function AdminConfiguracoes() {
+  const avisos = useAvisos();
   const [loading, setLoading] = useState(true);
   const [turmas, setTurmas] = useState([]);
   const [adminUserId, setAdminUserId] = useState(null);
@@ -116,10 +118,10 @@ export default function AdminConfiguracoes() {
         .eq('id', adminUserId);
 
       if (error) throw error;
-      alert('Perfil atualizado com sucesso no banco de dados!');
+      avisos.sucesso('Perfil atualizado com sucesso no banco de dados!');
     } catch (err) {
       console.error('Erro ao atualizar perfil:', err);
-      alert('Erro ao atualizar perfil.');
+      avisos.erro('Erro ao atualizar perfil.');
     } finally {
       setSalvandoPerfil(false);
     }
@@ -139,14 +141,14 @@ export default function AdminConfiguracoes() {
           .eq('id', turmaEmEdicao.id);
 
         if (error) throw error;
-        alert('Turma atualizada com sucesso!');
+        avisos.sucesso('Turma atualizada com sucesso!');
       } else {
         const { error } = await supabase
           .from('turmas')
           .insert({ nome: nomeNovaTurma });
 
         if (error) throw error;
-        alert('Turma criada com sucesso!');
+        avisos.sucesso('Turma criada com sucesso!');
       }
 
       setModalTurmaOpen(false);
@@ -155,7 +157,7 @@ export default function AdminConfiguracoes() {
       carregarDadosAdmin();
     } catch (err) {
       console.error('Erro ao salvar turma:', err);
-      alert('Erro ao salvar turma.');
+      avisos.erro('Erro ao salvar turma.');
     } finally {
       setSalvandoTurma(false);
     }
@@ -163,16 +165,16 @@ export default function AdminConfiguracoes() {
 
   // Excluir Turma
   const handleExcluirTurma = async (id, nome) => {
-    if (!window.confirm(`Tem certeza que deseja excluir a turma "${nome}"?`)) return;
+    if (!(await avisos.confirmar({ titulo: `Excluir a turma "${nome}"?`, mensagem: 'Essa ação não pode ser desfeita.', confirmarTexto: 'Excluir', perigo: true }))) return;
 
     try {
       const { error } = await supabase.from('turmas').delete().eq('id', id);
       if (error) throw error;
-      alert('Turma excluída com sucesso!');
+      avisos.sucesso('Turma excluída com sucesso!');
       carregarDadosAdmin();
     } catch (err) {
       console.error('Erro ao excluir turma:', err);
-      alert('Erro ao excluir turma. Verifique se há alunos vinculados.');
+      avisos.erro('Erro ao excluir turma. Verifique se há alunos vinculados.');
     }
   };
 
@@ -192,23 +194,23 @@ export default function AdminConfiguracoes() {
   const handleAtualizarSenha = async (e) => {
     e.preventDefault();
     if (!senhaNova || senhaNova !== senhaConfirma) {
-      return alert('As senhas não coincidem ou estão vazias.');
+      return avisos.erro('As senhas não coincidem ou estão vazias.');
     }
 
     if (senhaNova.length < 6) {
-      return alert('A senha precisa ter pelo menos 6 caracteres.');
+      return avisos.erro('A senha precisa ter pelo menos 6 caracteres.');
     }
 
     setSalvandoSenha(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: senhaNova });
       if (error) throw error;
-      alert('Senha atualizada com sucesso no sistema de autenticação!');
+      avisos.sucesso('Senha atualizada com sucesso no sistema de autenticação!');
       setSenhaNova('');
       setSenhaConfirma('');
     } catch (err) {
       console.error('Erro ao atualizar senha:', err);
-      alert('Erro ao atualizar senha: ' + err.message);
+      avisos.erro('Erro ao atualizar senha: ' + err.message);
     } finally {
       setSalvandoSenha(false);
     }

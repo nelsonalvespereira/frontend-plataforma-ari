@@ -4,7 +4,9 @@ import { ArrowLeft, Radio, MessageSquare, Send, Loader2, Calendar } from 'lucide
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Sidebar from './Sidebar';
 
+import { useAvisos } from '../components/Avisos';
 export default function LivePlayer() {
+  const avisos = useAvisos();
   const navigate = useNavigate();
   const { id } = useParams();
   
@@ -113,7 +115,7 @@ export default function LivePlayer() {
       setNovaMensagem('');
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error.message);
-      alert('Não foi possível enviar a mensagem.');
+      avisos.erro('Não foi possível enviar a mensagem.');
     } finally {
       setEnviando(false);
     }

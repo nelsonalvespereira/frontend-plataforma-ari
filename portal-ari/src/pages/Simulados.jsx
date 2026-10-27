@@ -15,7 +15,9 @@ import RenderBlocos from '../components/RenderBlocos';
 import ResolucaoProfessor from '../components/ResolucaoProfessor';
 import { supabase } from '../lib/supabaseClient';
 
+import { useAvisos } from '../components/Avisos';
 export default function Simulados() {
+  const avisos = useAvisos();
   const navigate = useNavigate();
   const { profile } = useAuth();
 
@@ -102,14 +104,14 @@ export default function Simulados() {
 
     const { questoes, error } = await buscarQuestoesDoSimulado(simulado.id);
     if (error || questoes.length === 0) {
-      alert('Não foi possível carregar as questões desse simulado.');
+      avisos.erro('Não foi possível carregar as questões desse simulado.');
       setCarregandoProva(false);
       return;
     }
 
     const { tentativa, error: erroTentativa } = await iniciarTentativa(simulado.id);
     if (erroTentativa) {
-      alert('Não foi possível iniciar o simulado.');
+      avisos.erro('Não foi possível iniciar o simulado.');
       setCarregandoProva(false);
       return;
     }
@@ -141,7 +143,7 @@ export default function Simulados() {
       const { data: questoesData, error: erroBusca } = await query;
 
       if (erroBusca || !questoesData || questoesData.length === 0) {
-        alert('Não encontramos questões cadastradas para este assunto específico ainda.');
+        avisos.info('Ainda não há questões cadastradas para este assunto.');
         setGerando(false);
         return;
       }
@@ -158,7 +160,7 @@ export default function Simulados() {
 
       setGerando(false);
       if (error) {
-        alert('Erro ao gerar o simulado. Tente novamente.');
+        avisos.erro('Não foi possível gerar o simulado. Tente novamente.');
         return;
       }
       abrirProva(simulado);
@@ -177,7 +179,7 @@ export default function Simulados() {
     });
 
     if (erroBusca || questaoIds.length === 0) {
-      alert('Não encontramos questões suficientes com esse filtro ainda.');
+      avisos.info('Ainda não há questões suficientes com esse filtro.');
       setGerando(false);
       return;
     }
@@ -192,7 +194,7 @@ export default function Simulados() {
 
     setGerando(false);
     if (error) {
-      alert('Erro ao gerar o simulado. Tente novamente.');
+      avisos.erro('Não foi possível gerar o simulado. Tente novamente.');
       return;
     }
     abrirProva(simulado);
@@ -213,7 +215,7 @@ export default function Simulados() {
     const { resultado: r, error } = await finalizarTentativa(tentativaId, respostas);
     if (error || !r) {
       setFinalizando(false);
-      alert('Não foi possível corrigir o simulado. Verifique sua conexão e tente finalizar de novo.');
+      avisos.erro('Não foi possível corrigir o simulado. Verifique sua conexão e tente finalizar de novo.');
       return;
     }
 

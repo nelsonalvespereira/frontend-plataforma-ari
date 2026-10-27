@@ -5,6 +5,7 @@ import { useFavoritos, removerFavorito } from '../hooks/useFavoritos';
 import QuestaoPreviewCard from '../components/QuestaoPreviewCard';
 import { obterGabarito } from '../hooks/useQuestoes';
 
+import { useAvisos } from '../components/Avisos';
 const DIFICULDADE_STYLE = {
   facil: 'bg-emerald-50 text-emerald-700',
   medio: 'bg-amber-50 text-amber-700',
@@ -13,6 +14,7 @@ const DIFICULDADE_STYLE = {
 const DIFICULDADE_LABEL = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' };
 
 export default function Favoritos() {
+  const avisos = useAvisos();
   const { questoes, loading, error, recarregar } = useFavoritos();
   const [questaoAberta, setQuestaoAberta] = useState(null);
 
@@ -28,7 +30,7 @@ export default function Favoritos() {
 
   const handleRemover = async (e, favoritoId) => {
     e.stopPropagation();
-    if (!confirm('Remover essa questão dos favoritos?')) return;
+    if (!(await avisos.confirmar({ titulo: 'Remover dos favoritos?', mensagem: 'A questão sai da sua lista de favoritos.', confirmarTexto: 'Remover', perigo: true }))) return;
     await removerFavorito(favoritoId);
     recarregar();
   };

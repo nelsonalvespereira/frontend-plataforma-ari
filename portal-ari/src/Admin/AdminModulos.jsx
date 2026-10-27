@@ -6,7 +6,9 @@ import {
   useModulosComAulas, criarModulo, renomearModulo, excluirModulo, reordenarModulos,
 } from '../hooks/useModulos';
 
+import { useAvisos } from '../components/Avisos';
 export default function AdminModulos() {
+  const avisos = useAvisos();
   const { turmas } = useTurmas();
   const [turmaId, setTurmaId] = useState('');
 
@@ -30,7 +32,7 @@ export default function AdminModulos() {
     const { error } = await criarModulo({ turmaId, titulo: novoTitulo.trim(), ordem: proximaOrdem });
     setCriando(false);
     if (error) {
-      alert('Erro ao criar módulo: ' + error.message);
+      avisos.erro('Erro ao criar módulo: ' + error.message);
       return;
     }
     setNovoTitulo('');
@@ -55,7 +57,7 @@ export default function AdminModulos() {
     const aviso = modulo.aulas.length > 0
       ? `Esse módulo tem ${modulo.aulas.length} aula(s). Elas não serão apagadas, só ficam sem módulo. Excluir mesmo assim?`
       : 'Excluir esse módulo?';
-    if (!confirm(aviso)) return;
+    if (!(await avisos.confirmar({ titulo: 'Excluir esse módulo?', mensagem: modulo.aulas.length > 0 ? aviso.replace(' Excluir mesmo assim?', '') : undefined, confirmarTexto: 'Excluir', perigo: true }))) return;
     const { error } = await excluirModulo(modulo.id);
     if (!error) recarregar();
   };

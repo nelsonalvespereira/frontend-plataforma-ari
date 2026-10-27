@@ -5,6 +5,7 @@ import AdminSidebar from './AdminSidebar';
 import { useAdminVideoaulas, useAdminLives, useTurmas } from '../hooks/useLives';
 import { supabase } from '../lib/supabaseClient';
 
+import { useAvisos } from '../components/Avisos';
 const STATUS_LIVE_STYLE = {
   Agendada: 'bg-blue-50 text-blue-700',
   'Ao Vivo': 'bg-red-50 text-red-600 animate-pulse',
@@ -12,6 +13,7 @@ const STATUS_LIVE_STYLE = {
 };
 
 export default function AdminAulasLives() {
+  const avisos = useAvisos();
   const [aba, setAba] = useState('videoaulas');
   const [busca, setBusca] = useState('');
   const [turmaFiltro, setTurmaFiltro] = useState('');
@@ -82,14 +84,14 @@ export default function AdminAulasLives() {
   };
 
   const handleExcluirVideoaula = async (id) => {
-    if (!window.confirm('Excluir essa videoaula?')) return;
+    if (!(await avisos.confirmar({ titulo: 'Excluir essa videoaula?', confirmarTexto: 'Excluir', perigo: true }))) return;
     await excluirVideoaula(id);
     setMenuAberto(null);
     if (fetchVideoaulas) fetchVideoaulas();
   };
 
   const handleExcluirLive = async (id) => {
-    if (!window.confirm('Excluir essa live?')) return;
+    if (!(await avisos.confirmar({ titulo: 'Excluir essa live?', confirmarTexto: 'Excluir', perigo: true }))) return;
     await excluirLive(id);
     setMenuAberto(null);
     if (fetchLives) fetchLives();
@@ -109,7 +111,7 @@ export default function AdminAulasLives() {
   // Salvar Videoaula
   const handleSalvarVideoaula = async (e) => {
     e.preventDefault();
-    if (!tituloV || !turmaIdV) return alert('Preencha os campos obrigatórios.');
+    if (!tituloV || !turmaIdV) return avisos.erro('Preencha os campos obrigatórios.');
 
     setSalvando(true);
     try {
@@ -130,7 +132,7 @@ export default function AdminAulasLives() {
 
       if (error) throw error;
 
-      alert('Videoaula cadastrada com sucesso!');
+      avisos.sucesso('Videoaula cadastrada com sucesso!');
       setModalVideoaulaAberto(false);
       setTituloV('');
       setModuloIdV('');
@@ -140,7 +142,7 @@ export default function AdminAulasLives() {
       if (fetchVideoaulas) fetchVideoaulas();
     } catch (err) {
       console.error('Erro ao cadastrar videoaula:', err);
-      alert('Erro ao salvar videoaula: ' + (err.message || 'Erro desconhecido'));
+      avisos.erro('Erro ao salvar videoaula: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setSalvando(false);
     }
@@ -188,13 +190,13 @@ export default function AdminAulasLives() {
 
       if (error) throw error;
 
-      alert('Videoaula atualizada com sucesso!');
+      avisos.sucesso('Videoaula atualizada com sucesso!');
       setModalEditVideoAberto(false);
       setVideoEmEdicao(null);
       if (fetchVideoaulas) fetchVideoaulas();
     } catch (err) {
       console.error('Erro ao atualizar videoaula:', err);
-      alert('Erro ao atualizar videoaula: ' + err.message);
+      avisos.erro('Erro ao atualizar videoaula: ' + err.message);
     } finally {
       setSalvando(false);
     }
@@ -203,7 +205,7 @@ export default function AdminAulasLives() {
   // Salvar Live
   const handleSalvarLive = async (e) => {
     e.preventDefault();
-    if (!tituloL || !turmaIdL || !dataHoraL) return alert('Preencha os campos obrigatórios.');
+    if (!tituloL || !turmaIdL || !dataHoraL) return avisos.erro('Preencha os campos obrigatórios.');
 
     setSalvando(true);
     try {
@@ -219,7 +221,7 @@ export default function AdminAulasLives() {
 
       if (error) throw error;
 
-      alert('Live agendada com sucesso!');
+      avisos.sucesso('Live agendada com sucesso!');
       setModalLiveAberto(false);
       setTituloL('');
       setTurmaIdL('');
@@ -228,7 +230,7 @@ export default function AdminAulasLives() {
       if (fetchLives) fetchLives();
     } catch (err) {
       console.error('Erro ao agendar live:', err);
-      alert('Erro ao salvar live: ' + err.message);
+      avisos.erro('Erro ao salvar live: ' + err.message);
     } finally {
       setSalvando(false);
     }
@@ -268,13 +270,13 @@ export default function AdminAulasLives() {
 
       if (error) throw error;
 
-      alert('Live atualizada com sucesso!');
+      avisos.sucesso('Live atualizada com sucesso!');
       setModalEditLiveAberto(false);
       setLiveEmEdicao(null);
       if (fetchLives) fetchLives();
     } catch (err) {
       console.error('Erro ao atualizar live:', err);
-      alert('Erro ao atualizar live: ' + err.message);
+      avisos.erro('Erro ao atualizar live: ' + err.message);
     } finally {
       setSalvando(false);
     }
